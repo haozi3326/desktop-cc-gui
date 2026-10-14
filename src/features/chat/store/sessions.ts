@@ -1,4 +1,5 @@
 import { normalizeOmpServiceTier } from "@/lib/omp-service-tier";
+import { resolveSidebarThreadLimit } from "./sidebar-thread-limit";
 import {
   ipc,
   type EngineInfo,
@@ -228,7 +229,21 @@ export function createSessionActions(
               settings.codexServiceTier,
             ),
             models: settings.defaultModels ?? {},
-            threadLimit: settings.sidebarThreadLimit ?? 5,
+            threadLimit: (() => {
+              const { limit, migratedFromLegacy } = resolveSidebarThreadLimit(
+                settings.sidebarThreadLimit,
+              );
+              // Soft-migrate legacy default 5 → 15 (mirrors Rust read_settings).
+              if (migratedFromLegacy) {
+                void ipc
+                  .updateAppSettings({
+                    ...settings,
+                    sidebarThreadLimit: limit,
+                  })
+                  .catch(() => {});
+              }
+              return limit;
+            })(),
             workspaceGroups: settings.workspaceGroups ?? [],
             workspaceAliases: settings.workspaceAliases ?? {},
             archivedWorkspaces: settings.archivedWorkspaces ?? [],

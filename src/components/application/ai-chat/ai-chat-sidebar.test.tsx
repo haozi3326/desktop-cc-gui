@@ -6,7 +6,10 @@ import { AiChatSidebar } from "./ai-chat-sidebar";
 import type { AiChatRepo } from "./ai-chat-sidebar";
 
 vi.mock("react-i18next", () => ({
-  useTranslation: () => ({ t: (key: string) => key }),
+  useTranslation: () => ({
+    t: (key: string, opts?: { count?: number }) =>
+      opts?.count != null ? `${key}:${opts.count}` : key,
+  }),
   // The palette's content-hit rows format relative time via the real i18n
   // instance (time.ts), which initializes i18next with this plugin.
   initReactI18next: { type: "3rdParty", init: () => {} },
@@ -140,6 +143,7 @@ it("展开只显示 threadLimit 条,收起再展开不会保留加载更多", as
     el.textContent?.includes("chat.showMoreSessions"),
   );
   if (!more) throw new Error("no load-more row");
+  expect(more.textContent).toContain("chat.showMoreSessions:7");
   await act(async () => more.click());
   expect(namedThreadCount()).toBe(12);
 

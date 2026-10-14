@@ -1,3 +1,4 @@
+import { DEFAULT_SIDEBAR_THREAD_LIMIT } from "./store/sidebar-thread-limit";
 import { create } from "zustand";
 import { ipc, type SessionMeta, type SessionPage } from "@/lib/ipc";
 import { botById } from "@/features/bots/bot-store";
@@ -185,7 +186,7 @@ export const useChatStore = create<ChatStore>((set, get) => {
     codexServiceTier: null,
     models: {},
     providers: {},
-    threadLimit: 10,
+    threadLimit: DEFAULT_SIDEBAR_THREAD_LIMIT,
     workspaceGroups: [],
     workspaceAliases: {},
     archivedWorkspaces: [],

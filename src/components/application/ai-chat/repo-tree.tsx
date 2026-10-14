@@ -767,7 +767,7 @@ function PagedThreadList({
           onClick={() => setPage((value) => value + 1)}
           className={pageButtonClasses}
         >
-          <span className="truncate">{t("chat.showMoreSessions")}</span>
+          <span className="truncate">{t("chat.showMoreSessions", { count: hiddenCount })}</span>
         </button>
       ) : null}
       {page > 0 ? (

@@ -40,6 +40,7 @@ import {
 import { changeZoom, onZoomChange, readZoomPct, ZOOM_MAX, ZOOM_MIN, ZOOM_STEP } from "@/lib/zoom";
 import { PromptHistoryManager, PromptHistoryToggleRow } from "./PromptHistorySettings";
 import { useChatStore } from "@/features/chat/store";
+import { DEFAULT_SIDEBAR_THREAD_LIMIT } from "@/features/chat/store/sidebar-thread-limit";
 
 export const LANGUAGE_STORAGE_KEY = "ccgui-next.language";
 
@@ -48,7 +49,7 @@ const SELECT_TRIGGER = "h-8 w-auto gap-1 rounded-lg px-2 py-1.5";
 /** Sidebar thread limit bounds (integers only). */
 const THREAD_LIMIT_MIN = 1;
 const THREAD_LIMIT_MAX = 30;
-const THREAD_LIMIT_DEFAULT = 5;
+const THREAD_LIMIT_DEFAULT = DEFAULT_SIDEBAR_THREAD_LIMIT;
 /** Interface zoom presets: every step between the bounds so a percent set
  *  from the status bar or a shortcut always matches a select item. */
 const ZOOM_PRESETS: number[] = [];

@@ -253,7 +253,19 @@ fn default_ui_font_weight() -> String {
 }
 
 fn default_sidebar_thread_limit() -> u32 {
-    5
+    15
+}
+
+/// Pre-v2 installs persisted the old default (5). Soft-migrate that exact
+/// value to the new default so existing users are not stuck at 5; any other
+/// user-chosen value is left alone.
+fn migrate_sidebar_thread_limit(settings: &mut AppSettings) -> bool {
+    const LEGACY_DEFAULT: u32 = 5;
+    if settings.sidebar_thread_limit == LEGACY_DEFAULT {
+        settings.sidebar_thread_limit = default_sidebar_thread_limit();
+        return true;
+    }
+    false
 }
 
 fn default_composer_send_shortcut() -> String {
@@ -550,6 +562,14 @@ pub fn read_settings() -> Result<AppSettings, String> {
     let mut settings: AppSettings =
         serde_json::from_str(&content).map_err(|e| format!("parse {}: {e}", path.display()))?;
     normalize_pet_settings(&mut settings);
+    if migrate_sidebar_thread_limit(&mut settings) {
+        // Best-effort disk bump so the next cold start does not keep re-reading
+        // the legacy 5. try_lock avoids deadlock with callers that already hold
+        // SETTINGS_WRITE_LOCK around read→modify→persist.
+        if let Some(_guard) = SETTINGS_WRITE_LOCK.try_lock() {
+            let _ = persist_settings_committed(&mut settings);
+        }
+    }
     Ok(settings)
 }
 
@@ -1227,6 +1247,31 @@ mod tests {
             "the committed relay address survives the warning"
         );
         assert_eq!(saved.web_relay_key.as_deref(), Some("SAVED_KEY"));
+    }
+
+    #[test]
+    fn sidebar_thread_limit_defaults_to_15_and_soft_migrates_legacy_5() {
+        assert_eq!(AppSettings::default().sidebar_thread_limit, 15);
+        let missing: AppSettings = serde_json::from_str("{}").unwrap();
+        assert_eq!(
+            missing.sidebar_thread_limit, 15,
+            "missing field must use the new default, not the legacy 5"
+        );
+
+        let mut legacy: AppSettings =
+            serde_json::from_str(r#"{"sidebarThreadLimit":5}"#).unwrap();
+        assert_eq!(legacy.sidebar_thread_limit, 5, "serde keeps the on-disk 5");
+        assert!(migrate_sidebar_thread_limit(&mut legacy));
+        assert_eq!(legacy.sidebar_thread_limit, 15);
+        assert!(
+            !migrate_sidebar_thread_limit(&mut legacy),
+            "already-migrated value must not keep bumping"
+        );
+
+        let mut custom: AppSettings =
+            serde_json::from_str(r#"{"sidebarThreadLimit":7}"#).unwrap();
+        assert!(!migrate_sidebar_thread_limit(&mut custom));
+        assert_eq!(custom.sidebar_thread_limit, 7);
     }
 
     #[test]

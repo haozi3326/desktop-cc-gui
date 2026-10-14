@@ -82,7 +82,7 @@ const SETTINGS = {
   theme: "light",
   titlebar: "native",
   language: "zh",
-  sidebarThreadLimit: 5,
+  sidebarThreadLimit: 15,
   composerSendShortcut: "enter",
   thinkingAutoCollapse: true,
   petEnabled: false,

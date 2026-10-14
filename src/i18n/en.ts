@@ -373,7 +373,7 @@ export const en: Messages = {
     autoCompactResume:
       "Auto-compaction finished. Continue the previous task; if nothing remains, just say so briefly.",
     refreshing: "Refreshing…",
-    showMoreSessions: "Load more",
+    showMoreSessions: "{{count}} more sessions",
     showFewerSessions: "Show fewer",
     metaDuration: "Duration {{duration}}",
     metaModel: "Model {{model}}",

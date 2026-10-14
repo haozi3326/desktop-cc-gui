@@ -9,7 +9,7 @@ let settings = {
   theme: "light",
   titlebar: "native",
   language: "zh",
-  sidebarThreadLimit: 5,
+  sidebarThreadLimit: 15,
   uiFontSize: 16,
   contentFontSize: 14,
   codeFontSize: 13,

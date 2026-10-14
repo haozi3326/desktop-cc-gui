@@ -29,3 +29,10 @@ describe("paginateThreads", () => {
     expect(paginateThreads(threads(80), 5, 2).hiddenCount).toBe(0);
   });
 });
+
+  it("page 0 with limit 15 leaves a remaining hiddenCount", () => {
+    const result = paginateThreads(threads(20), 15, 0);
+    expect(result.visibleThreads).toHaveLength(15);
+    expect(result.hiddenCount).toBe(5);
+  });
+
