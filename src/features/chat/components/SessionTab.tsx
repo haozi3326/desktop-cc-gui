@@ -26,8 +26,11 @@ export interface SessionTabItem {
   unread?: string;
   /** Unsaved-changes dot before the label. */
   dirty?: boolean;
-  /** Tooltip; defaults to the label. */
+  /** Tooltip; defaults to the label (or label · workspace when set). */
   title?: string;
+  /** Workspace short name for session tabs (alias or path basename).
+   *  Shown as a secondary suffix so cross-project same-title tabs differ. */
+  workspaceShortName?: string;
 }
 
 /** Custom tab icon when provided, else the engine brand mark. */
@@ -138,7 +141,12 @@ export function SessionTab({
     <div
       data-tab-key={tab.key}
       role="presentation"
-      title={tab.title ?? tab.label}
+      title={
+        tab.title ??
+        (tab.workspaceShortName
+          ? `${tab.label} · ${tab.workspaceShortName}`
+          : tab.label)
+      }
       onContextMenu={(e) => {
         if (!onShowMenu) return;
         e.preventDefault();
@@ -181,7 +189,12 @@ export function SessionTab({
         {tab.dirty && (
           <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-foreground-icon-primary" />
         )}
-        <span className="truncate">{tab.label}</span>
+        <span className="truncate">
+          {tab.label}
+          {tab.workspaceShortName ? (
+            <span className="text-text-tertiary">{` · ${tab.workspaceShortName}`}</span>
+          ) : null}
+        </span>
       </div>
       {dropBefore !== null && (
         <span

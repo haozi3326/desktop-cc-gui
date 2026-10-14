@@ -136,3 +136,35 @@ it("marks a tab with a pending notice as unread, with its own accessible name", 
   expect(dot?.getAttribute("title")).toBe("新版本");
   expect(dot?.className).toContain("bg-accent-500");
 });
+
+it("shows workspace short name as a secondary suffix on session tabs", async () => {
+  await render({
+    tabs: [
+      {
+        key: "a",
+        label: "Same Title",
+        streaming: false,
+        workspaceShortName: "CodeUi",
+        title: "Same Title · CodeUi",
+      },
+      {
+        key: "b",
+        label: "Same Title",
+        streaming: false,
+        workspaceShortName: "novel",
+        title: "Same Title · novel",
+      },
+    ],
+  });
+
+  const tabA = node.querySelector<HTMLElement>('[data-tab-key="a"]');
+  const tabB = node.querySelector<HTMLElement>('[data-tab-key="b"]');
+  expect(tabA?.getAttribute("title")).toBe("Same Title · CodeUi");
+  expect(tabB?.getAttribute("title")).toBe("Same Title · novel");
+  expect(tabA?.textContent).toContain("Same Title");
+  expect(tabA?.textContent).toContain("CodeUi");
+  expect(tabB?.textContent).toContain("novel");
+  // Secondary suffix uses tertiary text class.
+  expect(tabA?.querySelector(".text-text-tertiary")?.textContent).toContain("CodeUi");
+});
+

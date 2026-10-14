@@ -12,7 +12,8 @@ import { useBetaFeaturesStore } from "@/features/settings/beta-features";
 import { RELEASE_NOTES_TAB_KEY, useReleaseNotesTabStore } from "@/features/update/notes-tab";
 import i18n from "@/lib/i18n";
 import { useChatStore } from "./store";
-import { useChatTabs } from "./use-chat-tabs";
+import { useChatTabs, workspaceShortNameForTab } from "./use-chat-tabs";
+import type { SessionMeta, Workspace } from "@/lib/ipc";
 import type { SessionTabItem } from "./components/SessionTab";
 
 /**
@@ -47,9 +48,17 @@ function Probe() {
     (item) => item.key === RELEASE_NOTES_TAB_KEY,
   );
   const notesUnread = notesTab?.unread ?? "";
+  const sessionBits = tabItems
+    .filter((item) => item.session)
+    .map(
+      (item) =>
+        `${item.key}|${item.label}|${item.workspaceShortName ?? ""}|${item.title ?? ""}|s=${item.streaming ? 1 : 0}|u=${item.unseen ? 1 : 0}`,
+    )
+    .join(";");
   return (
     <div>
       <span data-testid="keys">{tabItems.map((item) => item.key).join(",")}</span>
+      <span data-testid="session-bits">{sessionBits}</span>
       <span data-testid="active">{activeTabKey ?? ""}</span>
       <span data-testid="browser-count">{String(browserTabs.length)}</span>
       <span data-testid="browser-active">{activeBrowserId ?? ""}</span>
@@ -78,6 +87,8 @@ beforeEach(() => {
     sessions: [],
     unseen: {},
     streamingByKey: {},
+    workspaces: [],
+    workspaceAliases: {},
   });
   useBrowserStore.setState({ tabs: [BROWSER_TAB], activeId: BROWSER_TAB.id });
   resetMissionStore();
@@ -184,3 +195,99 @@ describe("useChatTabs beta entry gate", () => {
     expect(text("keys")).toBe("");
   });
 });
+
+describe("workspaceShortNameForTab", () => {
+  const ws: Workspace[] = [
+    { id: "w1", path: "/proj/CodeUi", name: "CodeUi", sortOrder: 0, groupId: null, lastOpenedAt: null },
+    { id: "w2", path: "/proj/novel", name: "novel", sortOrder: 1, groupId: null, lastOpenedAt: null },
+  ];
+
+  it("prefers settings alias over folder name", () => {
+    expect(workspaceShortNameForTab("/proj/CodeUi", ws, { w1: "支付后端" })).toBe("支付后端");
+  });
+
+  it("falls back to workspace name / path basename", () => {
+    expect(workspaceShortNameForTab("/proj/CodeUi", ws, {})).toBe("CodeUi");
+    expect(workspaceShortNameForTab("/orphan/OtherApp", [], {})).toBe("OtherApp");
+  });
+
+  it("returns undefined for empty path", () => {
+    expect(workspaceShortNameForTab("", ws, {})).toBeUndefined();
+  });
+});
+
+describe("useChatTabs session workspace labels", () => {
+  const WS_A: Workspace = {
+    id: "wa",
+    path: "/ws/Alpha",
+    name: "Alpha",
+    sortOrder: 0,
+    groupId: null,
+    lastOpenedAt: null,
+  };
+  const WS_B: Workspace = {
+    id: "wb",
+    path: "/ws/Beta",
+    name: "Beta",
+    sortOrder: 1,
+    groupId: null,
+    lastOpenedAt: null,
+  };
+  const SESS_A: SessionMeta = {
+    engine: "codex",
+    sessionId: "sa",
+    workspacePath: "/ws/Alpha",
+    filePath: "/local/sa.jsonl",
+    fileSize: 1,
+    fileMtimeMs: 1,
+    title: "Same Title",
+    preview: "",
+    createdAt: null,
+    updatedAt: 1,
+    messageCount: 1,
+    pinned: false,
+    customTitle: null,
+  };
+  const SESS_B: SessionMeta = {
+    ...SESS_A,
+    sessionId: "sb",
+    workspacePath: "/ws/Beta",
+    filePath: "/local/sb.jsonl",
+  };
+
+  it("tags session tabs with distinct workspace short names (alias or basename)", () => {
+    useChatStore.setState({
+      workspaces: [WS_A, WS_B],
+      workspaceAliases: { wa: "项目甲" },
+      sessions: [SESS_A, SESS_B],
+      openTabs: [
+        { engine: "codex", sessionId: "sa", workspacePath: "/ws/Alpha" },
+        { engine: "codex", sessionId: "sb", workspacePath: "/ws/Beta" },
+      ],
+      active: { engine: "codex", sessionId: "sa", workspacePath: "/ws/Alpha" },
+    });
+    render();
+    const bits = text("session-bits");
+    expect(bits).toContain("codex/sa|Same Title|项目甲|Same Title · 项目甲|s=0|u=0");
+    expect(bits).toContain("codex/sb|Same Title|Beta|Same Title · Beta|s=0|u=0");
+  });
+
+  it("keeps streaming / unseen flags on session tabs (label change does not touch process flags)", () => {
+    useChatStore.setState({
+      workspaces: [WS_A, WS_B],
+      workspaceAliases: {},
+      sessions: [SESS_A, SESS_B],
+      openTabs: [
+        { engine: "codex", sessionId: "sa", workspacePath: "/ws/Alpha" },
+        { engine: "codex", sessionId: "sb", workspacePath: "/ws/Beta" },
+      ],
+      active: { engine: "codex", sessionId: "sb", workspacePath: "/ws/Beta" },
+      streamingByKey: { "codex/sa": true },
+      unseen: { "codex/sa": true },
+    });
+    render();
+    expect(text("session-bits")).toContain("codex/sa|Same Title|Alpha|Same Title · Alpha|s=1|u=1");
+    expect(text("session-bits")).toContain("codex/sb|Same Title|Beta|Same Title · Beta|s=0|u=0");
+  });
+});
+

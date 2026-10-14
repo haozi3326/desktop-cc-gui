@@ -31,6 +31,25 @@ const DIFF_TAB_KEY = "diff:";
 // recomputing on every render while the flag is off.
 const NO_BROWSER_TABS: BrowserTab[] = [];
 
+
+/** Session-tab workspace short name: settings alias wins, else folder name /
+ *  path basename. Empty path yields undefined (no suffix). */
+export function workspaceShortNameForTab(
+  workspacePath: string,
+  workspaces: { id: string; path: string; name: string }[],
+  aliases: Record<string, string>,
+): string | undefined {
+  if (!workspacePath) return undefined;
+  const w = workspaces.find((ws) => ws.path === workspacePath);
+  if (w) {
+    const alias = aliases[w.id]?.trim();
+    if (alias) return alias;
+    if (w.name) return w.name;
+  }
+  const base = fileName(workspacePath);
+  return base || undefined;
+}
+
 /** Center tab strip data: session/file/diff tab items, the active key, and
  * the select/close/reorder handlers routing each tab kind to its store.
  * Sidebar/tab-strip slices are low-frequency — they change only on
@@ -41,12 +60,14 @@ export function useChatTabs({
   setDialog: (dialog: ChatPageDialog) => void;
 }) {
   const { t } = useTranslation();
-  const { active, openTabs, sessions, unseen } = useChatStore(
+  const { active, openTabs, sessions, unseen, workspaces, workspaceAliases } = useChatStore(
     useShallow((s) => ({
       active: s.active,
       openTabs: s.openTabs,
       sessions: s.sessions,
       unseen: s.unseen,
+      workspaces: s.workspaces,
+      workspaceAliases: s.workspaceAliases,
     })),
   );
   const { focusTab, closeTab, moveTab } = useChatStore(
@@ -169,19 +190,27 @@ export function useChatTabs({
         const meta = tab.sessionId
           ? sessionById.get(`${tab.engine}/${tab.sessionId}`)
           : undefined;
+        const label = meta?.customTitle || meta?.title || t("chat.newChat");
+        const workspaceShortName = workspaceShortNameForTab(
+          tab.workspacePath,
+          workspaces,
+          workspaceAliases,
+        );
         return {
           key: sessionKey(tab.engine, tab.sessionId, tab.workspacePath),
           // 会话身份随页签带下去：向下拖出页签条即分屏（split/drag.tsx）。
           session: tab,
           engine: tab.engine,
-          label: meta?.customTitle || meta?.title || t("chat.newChat"),
+          label,
+          title: workspaceShortName ? `${label} · ${workspaceShortName}` : label,
+          workspaceShortName,
           streaming: tabStreaming[index] ?? false,
           retrying: tabRetrying[index] ?? false,
           unseen: unseen[`${tab.engine}/${tab.sessionId}`] ?? false,
           tab,
         };
       }),
-    [openTabs, sessionById, tabStreaming, tabRetrying, t, unseen],
+    [openTabs, sessionById, tabStreaming, tabRetrying, t, unseen, workspaces, workspaceAliases],
   );
   // File tabs trail the session tabs in the same strip.
   const fileTabItems = useMemo(
