@@ -1,7 +1,8 @@
 /**
- * Display-only clustering for session tabs by workspacePath.
- * Does not rewrite openTabs / store order — callers keep store indices for
- * select/close/reorder, and only use the clustered list for rendering.
+ * Display-only workspace grouping for session tabs.
+ * Clustering (interleaved → contiguous) lives once in use-chat-tabs via
+ * clusterByWorkspacePath. groupSessionTabs only partitions already-contiguous
+ * tabs into groups for strip chrome (chips / separators).
  */
 
 /** Minimal shape: anything with a workspace path (session tabs). */
@@ -46,17 +47,17 @@ export interface SessionTabGroup<T extends WorkspaceKeyedTab> {
 }
 
 /**
- * Build display groups from (already clustered or raw) session tabs.
- * Groups are first-seen by workspacePath; within-group order preserved.
- * Pass shortNameFor when the strip should show a chip label.
+ * Partition already-contiguous session tabs into workspace groups for chrome.
+ * Does **not** re-cluster: callers must pass tabs clustered by
+ * clusterByWorkspacePath (use-chat-tabs does this once). Within each run of
+ * the same workspacePath, order is preserved. Pass shortNameFor for chip labels.
  */
 export function groupSessionTabs<T extends WorkspaceKeyedTab>(
   tabs: T[],
   shortNameFor?: (workspacePath: string) => string | undefined,
 ): SessionTabGroup<T>[] {
-  const clustered = clusterByWorkspacePath(tabs);
   const groups: SessionTabGroup<T>[] = [];
-  for (const tab of clustered) {
+  for (const tab of tabs) {
     const last = groups[groups.length - 1];
     if (last && last.workspacePath === tab.workspacePath) {
       last.tabs.push(tab);

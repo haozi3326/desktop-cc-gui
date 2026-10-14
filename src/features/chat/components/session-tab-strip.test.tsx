@@ -259,13 +259,21 @@ it("keeps non-session tabs after session groups with a surface separator", async
   expect(node.querySelectorAll('[data-tab-group-separator="workspace"]')).toHaveLength(1);
 });
 
-it("clusters interleaved session tabs in the strip for display", async () => {
-  // Strip also clusters if handed store order (defense in depth).
+it("renders pre-clustered multi-workspace tabs with chrome (no second cluster)", async () => {
+  // Production path: useChatTabs clusters once; strip only partitions for chrome.
+  // Store order [A1,B1,A2] arrives here already as [A1,A2,B1].
   await render({
     tabs: [
       {
         key: "a1",
         label: "A1",
+        streaming: false,
+        workspacePath: "/ws/Alpha",
+        workspaceShortName: "Alpha",
+      },
+      {
+        key: "a2",
+        label: "A2",
         streaming: false,
         workspacePath: "/ws/Alpha",
         workspaceShortName: "Alpha",
@@ -277,18 +285,15 @@ it("clusters interleaved session tabs in the strip for display", async () => {
         workspacePath: "/ws/Beta",
         workspaceShortName: "Beta",
       },
-      {
-        key: "a2",
-        label: "A2",
-        streaming: false,
-        workspacePath: "/ws/Alpha",
-        workspaceShortName: "Alpha",
-      },
     ],
   });
   const keys = [...node.querySelectorAll("[data-tab-key]")].map(
     (el) => el.getAttribute("data-tab-key"),
   );
   expect(keys).toEqual(["a1", "a2", "b1"]);
+  expect(
+    [...node.querySelectorAll("[data-tab-workspace-chip]")].map((el) => el.textContent),
+  ).toEqual(["Alpha", "Beta"]);
+  expect(node.querySelectorAll('[data-tab-group-separator="workspace"]')).toHaveLength(1);
 });
 

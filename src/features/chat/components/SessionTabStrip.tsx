@@ -281,7 +281,7 @@ export function SessionTabStrip({
   );
 }
 
-/** Split session vs non-session, cluster sessions by workspace for chrome. */
+/** Split session vs non-session; partition pre-clustered sessions for chrome. */
 function TabListBody({
   tabs,
   activeKey,
@@ -309,7 +309,8 @@ function TabListBody({
     if (tab.workspacePath !== undefined) sessionTabs.push(tab);
     else otherTabs.push(tab);
   }
-  // Tabs already arrive clustered from useChatTabs; group() is order-stable.
+  // Tabs arrive already clustered from useChatTabs (single cluster path).
+  // groupSessionTabs only partitions contiguous runs for chrome — no re-cluster.
   const groups = groupSessionTabs(
     sessionTabs.map((tab) => ({
       ...tab,

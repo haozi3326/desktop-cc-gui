@@ -41,11 +41,12 @@ describe("clusterByWorkspacePath", () => {
 });
 
 describe("groupSessionTabs", () => {
-  it("builds groups with optional shortName chips", () => {
+  it("partitions pre-clustered tabs into groups with optional shortName chips", () => {
+    // Input must already be clustered (use-chat-tabs owns that once).
     const tabs = [
       { key: "A1", workspacePath: "/a" },
-      { key: "B1", workspacePath: "/b" },
       { key: "A2", workspacePath: "/a" },
+      { key: "B1", workspacePath: "/b" },
     ];
     const groups = groupSessionTabs(tabs, (p) => (p === "/a" ? "Alpha" : "Beta"));
     expect(groups).toHaveLength(2);
@@ -59,6 +60,21 @@ describe("groupSessionTabs", () => {
       shortName: "Beta",
       tabs: [{ key: "B1" }],
     });
+  });
+
+  it("does not re-cluster interleaved input (single cluster path is upstream)", () => {
+    const interleaved = [
+      { key: "A1", workspacePath: "/a" },
+      { key: "B1", workspacePath: "/b" },
+      { key: "A2", workspacePath: "/a" },
+    ];
+    const groups = groupSessionTabs(interleaved);
+    // Contiguous partition only — three runs, not two workspace clusters.
+    expect(groups.map((g) => g.tabs.map((t) => t.key))).toEqual([
+      ["A1"],
+      ["B1"],
+      ["A2"],
+    ]);
   });
 });
 
