@@ -103,6 +103,72 @@ it("active draft 新对话会展开其所在的折叠工作区", async () => {
   expect(JSON.parse(localStorage.getItem(KEY) ?? "[]")).not.toContain("b");
 });
 
+it("选中非 draft 会话会展开其所在的折叠工作区", async () => {
+  localStorage.setItem(KEY, JSON.stringify([]));
+  await act(async () => {
+    root.render(
+      <AiChatSidebar
+        activeThreadId="codex/b-1"
+        repos={[
+          repo("a", true),
+          {
+            id: "b",
+            label: "b",
+            threads: [
+              {
+                id: "codex/b-1",
+                label: "会话B",
+                time: "1m",
+              },
+            ],
+          },
+        ]}
+      />,
+    );
+  });
+  expect(rowFor("b").getAttribute("aria-expanded")).toBe("true");
+  expect(JSON.parse(localStorage.getItem(KEY) ?? "[]")).toContain("b");
+
+  // Same active: user collapse must stick (no re-reveal).
+  await act(async () => rowFor("b").click());
+  expect(rowFor("b").getAttribute("aria-expanded")).toBe("false");
+  expect(JSON.parse(localStorage.getItem(KEY) ?? "[]")).not.toContain("b");
+});
+
+it("切换到另一折叠工作区的会话时只展开该工作区一次", async () => {
+  localStorage.setItem(KEY, JSON.stringify([]));
+  const repos: AiChatRepo[] = [
+    {
+      id: "a",
+      label: "a",
+      threads: [{ id: "codex/a-1", label: "会话A", time: "1m" }],
+    },
+    {
+      id: "b",
+      label: "b",
+      threads: [{ id: "codex/b-1", label: "会话B", time: "1m" }],
+    },
+  ];
+
+  await act(async () => {
+    root.render(<AiChatSidebar activeThreadId="codex/a-1" repos={repos} />);
+  });
+  expect(rowFor("a").getAttribute("aria-expanded")).toBe("true");
+  expect(rowFor("b").getAttribute("aria-expanded")).toBe("false");
+  expect(JSON.parse(localStorage.getItem(KEY) ?? "[]")).toContain("a");
+
+  await act(async () => {
+    root.render(<AiChatSidebar activeThreadId="codex/b-1" repos={repos} />);
+  });
+  expect(rowFor("b").getAttribute("aria-expanded")).toBe("true");
+  expect(JSON.parse(localStorage.getItem(KEY) ?? "[]")).toContain("b");
+
+  // User collapses B while it is still active — must stay collapsed.
+  await act(async () => rowFor("b").click());
+  expect(rowFor("b").getAttribute("aria-expanded")).toBe("false");
+  expect(JSON.parse(localStorage.getItem(KEY) ?? "[]")).not.toContain("b");
+});
+
 it("remembers collapses too, and the default never overrides a stored set", async () => {
   await render([repo("a", true), repo("b")]);
   expect(rowFor("a").getAttribute("aria-expanded")).toBe("true");

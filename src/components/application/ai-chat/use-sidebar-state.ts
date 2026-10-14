@@ -126,19 +126,19 @@ export function useExpandedWorkspaces(allRepos: AiChatRepo[], activeThreadId?: s
   useEffect(() => {
     if (expandedWorkspaces) writeExpandedWorkspaces(expandedWorkspaces);
   }, [expandedWorkspaces]);
-  // Reveal a pending "新对话" once so it is not born inside a collapsed
-  // folder. Do not keep forcing it open — that would fight the user
-  // collapsing the workspace afterwards. Adjusting state during render (the
-  // documented replacement for a prop-change effect): the revealed-draft
-  // guard makes each draft id expand at most once, and React re-renders
-  // immediately before committing.
-  const [revealedDraftId, setRevealedDraftId] = useState<string | null>(null);
-  if (activeThreadId && revealedDraftId !== activeThreadId) {
+  // Reveal the workspace holding the active thread once so a selection
+  // (draft or not) is not born inside a collapsed folder. Do not keep
+  // forcing it open — that would fight the user collapsing the workspace
+  // afterwards. Adjusting state during render (the documented replacement
+  // for a prop-change effect): the revealed-active guard makes each active
+  // id expand at most once, and React re-renders immediately before committing.
+  const [revealedActiveId, setRevealedActiveId] = useState<string | null>(null);
+  if (activeThreadId && revealedActiveId !== activeThreadId) {
     const repo = allRepos.find((item) =>
-      item.threads.some((thread) => thread.id === activeThreadId && thread.isDraft),
+      item.threads.some((thread) => thread.id === activeThreadId),
     );
     if (repo?.id) {
-      setRevealedDraftId(activeThreadId);
+      setRevealedActiveId(activeThreadId);
       if (!isRepoExpanded(repo)) toggleRepoExpanded(repo);
     }
   }
