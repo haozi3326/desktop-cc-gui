@@ -745,7 +745,12 @@ function PagedThreadList({
     setPrevExpanded(expanded);
     if (expanded) setPage(0);
   }
-  const { visibleThreads, hiddenCount } = paginateThreads(threads, threadLimit, page);
+  const { visibleThreads, hiddenCount } = paginateThreads(
+    threads,
+    threadLimit,
+    page,
+    activeThreadId,
+  );
   const pageButtonClasses =
     "flex w-full cursor-pointer items-center rounded-2lg py-[5px] pr-2 pl-4 text-caption-1-medium text-text-tertiary transition-colors duration-150 ease hover:bg-background-secondary-hover hover:text-text-secondary";
   return (

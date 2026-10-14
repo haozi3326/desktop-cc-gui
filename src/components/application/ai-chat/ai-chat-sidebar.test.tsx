@@ -132,7 +132,7 @@ it("展开只显示 threadLimit 条,收起再展开不会保留加载更多", as
   await act(async () => {
     root.render(
       <AiChatSidebar
-        activeThreadId="codex/s-10"
+        activeThreadId="codex/s-2"
         repos={[{ id: "a", label: "a", defaultOpen: true, threadLimit: 5, threads }]}
       />,
     );
@@ -150,6 +150,45 @@ it("展开只显示 threadLimit 条,收起再展开不会保留加载更多", as
   await act(async () => rowFor("a").click());
   await act(async () => rowFor("a").click());
   expect(namedThreadCount()).toBe(5);
+});
+
+it("选中被 threadLimit 裁掉的会话时软扩露出，收起再展开仍露出", async () => {
+  const threads = Array.from({ length: 12 }, (_, index) => ({
+    id: `codex/s-${index}`,
+    label: `对话${index}`,
+    time: "1m",
+  }));
+  await act(async () => {
+    root.render(
+      <AiChatSidebar
+        activeThreadId="codex/s-10"
+        repos={[{ id: "a", label: "a", defaultOpen: true, threadLimit: 5, threads }]}
+      />,
+    );
+  });
+  // Soft-expand to index+1=11; remaining hiddenCount=1
+  expect(namedThreadCount()).toBe(11);
+  const selected = [...node.querySelectorAll("button")].find((el) =>
+    (el.textContent ?? "").replace(/\s+/g, "").includes("对话10"),
+  );
+  if (!selected) throw new Error("active thread row not visible");
+  expect(selected.getAttribute("aria-current")).toBe("page");
+
+  const more = [...node.querySelectorAll("button")].find((el) =>
+    el.textContent?.includes("chat.showMoreSessions"),
+  );
+  if (!more) throw new Error("no load-more row after soft expand");
+  expect(more.textContent).toContain("chat.showMoreSessions:1");
+
+  await act(async () => rowFor("a").click());
+  await act(async () => rowFor("a").click());
+  // Remount resets to page 0, then ensure soft-expands again
+  expect(namedThreadCount()).toBe(11);
+  const moreAgain = [...node.querySelectorAll("button")].find((el) =>
+    el.textContent?.includes("chat.showMoreSessions"),
+  );
+  if (!moreAgain) throw new Error("no load-more after re-expand");
+  expect(moreAgain.textContent).toContain("chat.showMoreSessions:1");
 });
 
 it("收起会话列表时裁切高度而不做透明度淡出", async () => {
