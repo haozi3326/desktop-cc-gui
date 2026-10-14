@@ -31,6 +31,8 @@ export interface SessionTabItem {
   /** Workspace short name for session tabs (alias or path basename).
    *  Shown as a secondary suffix so cross-project same-title tabs differ. */
   workspaceShortName?: string;
+  /** Workspace path for session tabs; used by the strip to cluster/separate. */
+  workspacePath?: string;
 }
 
 /** Custom tab icon when provided, else the engine brand mark. */

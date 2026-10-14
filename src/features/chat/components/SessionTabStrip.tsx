@@ -3,13 +3,17 @@ import MessageSquarePlus from "lucide-react/dist/esm/icons/message-square-plus";
 import Plus from "lucide-react/dist/esm/icons/plus";
 import { useCallback, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import type { ReactNode } from "react";
+import type { MutableRefObject, PointerEvent as ReactPointerEvent, ReactNode } from "react";
 import { needsWindowControls, useTitlebarStyle } from "@/features/settings/titlebar";
 import { IS_MAC } from "@/lib/platform";
 import { WindowControls } from "@/components/application/window-controls";
 import { ContextMenu } from "@/components/context-menu";
 import { cx } from "@/utils/cx";
 import { useOptionalSplitDrag } from "../split/drag";
+import {
+  groupSessionTabs,
+  shouldShowWorkspaceGroupChrome,
+} from "../group-session-tabs";
 import { SessionTab, type SessionTabItem } from "./SessionTab";
 import { useTabDragReorder } from "./use-tab-drag-reorder";
 import { useTabStripChrome } from "./use-tab-strip-chrome";
@@ -84,6 +88,31 @@ function NewTabMenu({
       ]}
       onClose={onDismiss}
     />
+  );
+}
+
+/** Vertical hairline between workspace groups (or session / non-session). */
+function TabGroupSeparator({ kind }: { kind?: "workspace" | "surface" }) {
+  return (
+    <span
+      role="separator"
+      aria-orientation="vertical"
+      data-tab-group-separator={kind ?? "workspace"}
+      className="mx-0.5 h-4 w-px shrink-0 self-center bg-separator-border"
+    />
+  );
+}
+
+/** Optional short-name chip ahead of a workspace cluster (≥2 workspaces). */
+function WorkspaceGroupChip({ name }: { name: string }) {
+  return (
+    <span
+      data-tab-workspace-chip=""
+      title={name}
+      className="ml-0.5 mr-0.5 max-w-[4.5rem] shrink-0 truncate rounded px-1 py-0.5 text-caption-1 text-text-tertiary"
+    >
+      {name}
+    </span>
   );
 }
 
@@ -209,21 +238,17 @@ export function SessionTabStrip({
         className="group scrollbar-none flex min-w-0 flex-1 items-center overflow-x-auto px-2"
       >
       <div role="tablist" aria-label="tabs" className="flex min-w-0 items-center gap-1">
-      {tabs.map((tab) => (
-        <SessionTab
-          key={tab.key}
-          tab={tab}
-          isActive={tab.key === activeKey}
-          dragged={dropTarget?.draggedKey === tab.key}
-          dropBefore={dropTarget?.key === tab.key ? dropTarget.before : null}
-          closeLabel={closeLabel}
-          onShowMenu={onCloseAll || onCloseInactive ? setMenu : undefined}
-          onSelect={onSelect}
-          onClose={onClose}
-          onPointerDown={onReorder ? handleTabPointerDown(tab) : undefined}
-          suppressClickRef={suppressClickRef}
-        />
-      ))}
+      <TabListBody
+        tabs={tabs}
+        activeKey={activeKey}
+        dropTarget={dropTarget}
+        closeLabel={closeLabel}
+        onShowMenu={onCloseAll || onCloseInactive ? setMenu : undefined}
+        onSelect={onSelect}
+        onClose={onClose}
+        onPointerDown={onReorder ? handleTabPointerDown : undefined}
+        suppressClickRef={suppressClickRef}
+      />
       </div>
       {onNew && (
         <NewTabButton
@@ -255,3 +280,82 @@ export function SessionTabStrip({
     </div>
   );
 }
+
+/** Split session vs non-session, cluster sessions by workspace for chrome. */
+function TabListBody({
+  tabs,
+  activeKey,
+  dropTarget,
+  closeLabel,
+  onShowMenu,
+  onSelect,
+  onClose,
+  onPointerDown,
+  suppressClickRef,
+}: {
+  tabs: SessionTabItem[];
+  activeKey: string | null;
+  dropTarget: { key: string; before: boolean; draggedKey: string } | null;
+  closeLabel: string;
+  onShowMenu?: (position: { x: number; y: number }) => void;
+  onSelect: (key: string) => void;
+  onClose: (key: string) => void;
+  onPointerDown?: (tab: SessionTabItem) => (e: ReactPointerEvent<HTMLDivElement>) => void;
+  suppressClickRef: MutableRefObject<boolean>;
+}) {
+  const sessionTabs: SessionTabItem[] = [];
+  const otherTabs: SessionTabItem[] = [];
+  for (const tab of tabs) {
+    if (tab.workspacePath !== undefined) sessionTabs.push(tab);
+    else otherTabs.push(tab);
+  }
+  // Tabs already arrive clustered from useChatTabs; group() is order-stable.
+  const groups = groupSessionTabs(
+    sessionTabs.map((tab) => ({
+      ...tab,
+      workspacePath: tab.workspacePath ?? "",
+    })),
+    (path) => {
+      const hit = sessionTabs.find((t) => t.workspacePath === path);
+      return hit?.workspaceShortName;
+    },
+  );
+  const showChrome = shouldShowWorkspaceGroupChrome(groups.length);
+
+  function renderTab(tab: SessionTabItem) {
+    return (
+      <SessionTab
+        key={tab.key}
+        tab={tab}
+        isActive={tab.key === activeKey}
+        dragged={dropTarget?.draggedKey === tab.key}
+        dropBefore={dropTarget?.key === tab.key ? dropTarget.before : null}
+        closeLabel={closeLabel}
+        onShowMenu={onShowMenu}
+        onSelect={onSelect}
+        onClose={onClose}
+        onPointerDown={onPointerDown?.(tab)}
+        suppressClickRef={suppressClickRef}
+      />
+    );
+  }
+
+  return (
+    <>
+      {groups.map((group, gi) => (
+        <span key={`ws:${group.workspacePath}:${gi}`} className="flex min-w-0 items-center gap-1">
+          {showChrome && gi > 0 ? <TabGroupSeparator kind="workspace" /> : null}
+          {showChrome && group.shortName ? (
+            <WorkspaceGroupChip name={group.shortName} />
+          ) : null}
+          {group.tabs.map((tab) => renderTab(tab))}
+        </span>
+      ))}
+      {sessionTabs.length > 0 && otherTabs.length > 0 ? (
+        <TabGroupSeparator kind="surface" />
+      ) : null}
+      {otherTabs.map((tab) => renderTab(tab))}
+    </>
+  );
+}
+

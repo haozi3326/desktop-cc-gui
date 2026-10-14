@@ -168,3 +168,127 @@ it("shows workspace short name as a secondary suffix on session tabs", async () 
   expect(tabA?.querySelector(".text-text-tertiary")?.textContent).toContain("CodeUi");
 });
 
+it("shows workspace separators and chips when ≥2 workspaces have session tabs", async () => {
+  await render({
+    tabs: [
+      {
+        key: "a1",
+        label: "A1",
+        streaming: false,
+        workspacePath: "/ws/Alpha",
+        workspaceShortName: "Alpha",
+      },
+      {
+        key: "a2",
+        label: "A2",
+        streaming: false,
+        workspacePath: "/ws/Alpha",
+        workspaceShortName: "Alpha",
+      },
+      {
+        key: "b1",
+        label: "B1",
+        streaming: false,
+        workspacePath: "/ws/Beta",
+        workspaceShortName: "Beta",
+      },
+    ],
+  });
+
+  const chips = [...node.querySelectorAll("[data-tab-workspace-chip]")].map(
+    (el) => el.textContent,
+  );
+  expect(chips).toEqual(["Alpha", "Beta"]);
+  const seps = [...node.querySelectorAll('[data-tab-group-separator="workspace"]')];
+  expect(seps).toHaveLength(1);
+  // Dom order: chip Alpha, a1, a2, sep, chip Beta, b1
+  const keys = [...node.querySelectorAll("[data-tab-key]")].map(
+    (el) => el.getAttribute("data-tab-key"),
+  );
+  expect(keys).toEqual(["a1", "a2", "b1"]);
+});
+
+it("omits group chrome for a single workspace", async () => {
+  await render({
+    tabs: [
+      {
+        key: "a1",
+        label: "A1",
+        streaming: false,
+        workspacePath: "/ws/Alpha",
+        workspaceShortName: "Alpha",
+      },
+      {
+        key: "a2",
+        label: "A2",
+        streaming: false,
+        workspacePath: "/ws/Alpha",
+        workspaceShortName: "Alpha",
+      },
+    ],
+  });
+  expect(node.querySelectorAll("[data-tab-workspace-chip]")).toHaveLength(0);
+  expect(node.querySelectorAll("[data-tab-group-separator]")).toHaveLength(0);
+});
+
+it("keeps non-session tabs after session groups with a surface separator", async () => {
+  await render({
+    tabs: [
+      {
+        key: "a1",
+        label: "A1",
+        streaming: false,
+        workspacePath: "/ws/Alpha",
+        workspaceShortName: "Alpha",
+      },
+      {
+        key: "b1",
+        label: "B1",
+        streaming: false,
+        workspacePath: "/ws/Beta",
+        workspaceShortName: "Beta",
+      },
+      { key: "file:/tmp/x.md", label: "x.md", streaming: false },
+    ],
+  });
+  const keys = [...node.querySelectorAll("[data-tab-key]")].map(
+    (el) => el.getAttribute("data-tab-key"),
+  );
+  expect(keys).toEqual(["a1", "b1", "file:/tmp/x.md"]);
+  expect(node.querySelectorAll('[data-tab-group-separator="surface"]')).toHaveLength(1);
+  expect(node.querySelectorAll('[data-tab-group-separator="workspace"]')).toHaveLength(1);
+});
+
+it("clusters interleaved session tabs in the strip for display", async () => {
+  // Strip also clusters if handed store order (defense in depth).
+  await render({
+    tabs: [
+      {
+        key: "a1",
+        label: "A1",
+        streaming: false,
+        workspacePath: "/ws/Alpha",
+        workspaceShortName: "Alpha",
+      },
+      {
+        key: "b1",
+        label: "B1",
+        streaming: false,
+        workspacePath: "/ws/Beta",
+        workspaceShortName: "Beta",
+      },
+      {
+        key: "a2",
+        label: "A2",
+        streaming: false,
+        workspacePath: "/ws/Alpha",
+        workspaceShortName: "Alpha",
+      },
+    ],
+  });
+  const keys = [...node.querySelectorAll("[data-tab-key]")].map(
+    (el) => el.getAttribute("data-tab-key"),
+  );
+  expect(keys).toEqual(["a1", "a2", "b1"]);
+});
+

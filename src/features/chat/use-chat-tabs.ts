@@ -21,6 +21,7 @@ import { useGitStore } from "@/features/git/store";
 import type { SessionMeta } from "@/lib/ipc";
 import { sessionKey, useChatStore, type ActiveSession } from "./store";
 import type { ChatPageDialog } from "./ChatPageDialogs";
+import { clusterByWorkspacePath } from "./group-session-tabs";
 
 // File tabs share the session tab strip; their keys are prefixed so select /
 // close handlers can route them to the files store instead of the chat store.
@@ -204,6 +205,8 @@ export function useChatTabs({
           label,
           title: workspaceShortName ? `${label} · ${workspaceShortName}` : label,
           workspaceShortName,
+          // 展示态按 workspace 聚类用；不回写 openTabs。
+          workspacePath: tab.workspacePath,
           streaming: tabStreaming[index] ?? false,
           retrying: tabRetrying[index] ?? false,
           unseen: unseen[`${tab.engine}/${tab.sessionId}`] ?? false,
@@ -312,9 +315,14 @@ export function useChatTabs({
         : [],
     [notesOpen, notesUnread, t],
   );
+  // 展示态按 workspacePath first-seen 聚类；handlers 仍用 store 序的 sessionTabItems。
+  const displaySessionTabItems = useMemo(
+    () => clusterByWorkspacePath(sessionTabItems),
+    [sessionTabItems],
+  );
   const tabItems = useMemo(
     () => [
-      ...sessionTabItems,
+      ...displaySessionTabItems,
       ...fileTabItems,
       ...browserTabItems,
       ...pluginTabItems,
@@ -333,7 +341,7 @@ export function useChatTabs({
           ]
         : []),
     ],
-    [sessionTabItems, fileTabItems, browserTabItems, pluginTabItems, hubTabItems, missionTabItems, notesTabItems, diffView],
+    [displaySessionTabItems, fileTabItems, browserTabItems, pluginTabItems, hubTabItems, missionTabItems, notesTabItems, diffView],
   );
   const activeTabKey = activeCenterTabKey({
     diffView,
@@ -417,6 +425,7 @@ interface SessionTabItem {
   label: string;
   streaming: boolean;
   unseen: boolean;
+  workspacePath: string;
   tab: ActiveSession;
 }
 
@@ -638,7 +647,7 @@ function useChatTabHandlers({
   );
   // Drag-reorder stays within each tab-kind group (sessions, files,
   // browsers each reorder in their own store); cross-group drops are
-  // ignored.
+  // ignored. Session tabs additionally stay inside one workspacePath.
   const handleTabReorder = useCallback(
     (draggedKey: string, targetKey: string, before: boolean) => {
       if (draggedKey === DIFF_TAB_KEY || targetKey === DIFF_TAB_KEY) return;
@@ -672,9 +681,17 @@ function useChatTabHandlers({
       }
       const from = sessionTabItems.findIndex((i) => i.key === draggedKey);
       const target = sessionTabItems.findIndex((i) => i.key === targetKey);
-      const dragged = sessionTabItems[from]?.tab;
-      if (!dragged || target < 0) return;
-      moveTab(dragged.engine, dragged.sessionId, dragged.workspacePath, dropTargetIndex(from, target, before));
+      const dragged = sessionTabItems[from];
+      const dropOn = sessionTabItems[target];
+      if (!dragged || !dropOn) return;
+      // 会话只允许同 workspace 内排序；跨项目 drop 忽略（不回写聚类）。
+      if (dragged.workspacePath !== dropOn.workspacePath) return;
+      moveTab(
+        dragged.tab.engine,
+        dragged.tab.sessionId,
+        dragged.tab.workspacePath,
+        dropTargetIndex(from, target, before),
+      );
     },
     [openFiles, moveOpenFile, sessionTabItems, moveTab, browserTabs, moveBrowserTab, pluginTabs, movePluginTab],
   );

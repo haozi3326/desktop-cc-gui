@@ -34,6 +34,7 @@ function Probe() {
   const {
     tabItems,
     activeTabKey,
+    handleTabReorder,
     browserTabs,
     activeBrowserId,
     pluginHubOpen,
@@ -43,13 +44,18 @@ function Probe() {
     notesOpen,
     notesActive,
   } = useChatTabs({ setDialog: () => {} });
+  // Expose reorder for cross-workspace ignore / same-workspace move tests.
+  (globalThis as unknown as { __tabReorder?: typeof handleTabReorder }).__tabReorder =
+    handleTabReorder;
   // 未读标记只挂在版本更新页签上；页签条按公共 SessionTabItem 渲染，这里也按它读。
   const notesTab: SessionTabItem | undefined = tabItems.find(
     (item) => item.key === RELEASE_NOTES_TAB_KEY,
   );
   const notesUnread = notesTab?.unread ?? "";
-  const sessionBits = tabItems
-    .filter((item) => item.session)
+  const sessionBits = (tabItems as SessionTabItem[])
+    .filter((item): item is SessionTabItem & { session: NonNullable<SessionTabItem["session"]> } =>
+      !!item.session,
+    )
     .map(
       (item) =>
         `${item.key}|${item.label}|${item.workspaceShortName ?? ""}|${item.title ?? ""}|s=${item.streaming ? 1 : 0}|u=${item.unseen ? 1 : 0}`,
@@ -288,6 +294,123 @@ describe("useChatTabs session workspace labels", () => {
     render();
     expect(text("session-bits")).toContain("codex/sa|Same Title|Alpha|Same Title · Alpha|s=1|u=1");
     expect(text("session-bits")).toContain("codex/sb|Same Title|Beta|Same Title · Beta|s=0|u=0");
+  });
+});
+
+describe("useChatTabs session workspace grouping", () => {
+  const WS_A: Workspace = {
+    id: "wa",
+    path: "/ws/Alpha",
+    name: "Alpha",
+    sortOrder: 0,
+    groupId: null,
+    lastOpenedAt: null,
+  };
+  const WS_B: Workspace = {
+    id: "wb",
+    path: "/ws/Beta",
+    name: "Beta",
+    sortOrder: 1,
+    groupId: null,
+    lastOpenedAt: null,
+  };
+  const SESS_A1: SessionMeta = {
+    engine: "codex",
+    sessionId: "a1",
+    workspacePath: "/ws/Alpha",
+    filePath: "/local/a1.jsonl",
+    fileSize: 1,
+    fileMtimeMs: 1,
+    title: "A1",
+    preview: "",
+    createdAt: null,
+    updatedAt: 1,
+    messageCount: 1,
+    pinned: false,
+    customTitle: null,
+  };
+  const SESS_A2: SessionMeta = { ...SESS_A1, sessionId: "a2", filePath: "/local/a2.jsonl", title: "A2" };
+  const SESS_B1: SessionMeta = {
+    ...SESS_A1,
+    sessionId: "b1",
+    workspacePath: "/ws/Beta",
+    filePath: "/local/b1.jsonl",
+    title: "B1",
+  };
+
+  function seedInterleaved() {
+    useChatStore.setState({
+      workspaces: [WS_A, WS_B],
+      workspaceAliases: {},
+      sessions: [SESS_A1, SESS_A2, SESS_B1],
+      // store order A1, B1, A2 — display must cluster to A1, A2, B1
+      openTabs: [
+        { engine: "codex", sessionId: "a1", workspacePath: "/ws/Alpha" },
+        { engine: "codex", sessionId: "b1", workspacePath: "/ws/Beta" },
+        { engine: "codex", sessionId: "a2", workspacePath: "/ws/Alpha" },
+      ],
+      active: { engine: "codex", sessionId: "a1", workspacePath: "/ws/Alpha" },
+    });
+  }
+
+  it("clusters session tabs by workspacePath for display without rewriting openTabs", () => {
+    seedInterleaved();
+    render();
+    expect(text("keys").split(",").filter((k) => k.startsWith("codex/"))).toEqual([
+      "codex/a1",
+      "codex/a2",
+      "codex/b1",
+    ]);
+    // Store order untouched.
+    expect(useChatStore.getState().openTabs.map((t) => t.sessionId)).toEqual([
+      "a1",
+      "b1",
+      "a2",
+    ]);
+  });
+
+  it("keeps a single-workspace strip without reordering", () => {
+    useChatStore.setState({
+      workspaces: [WS_A],
+      workspaceAliases: {},
+      sessions: [SESS_A1, SESS_A2],
+      openTabs: [
+        { engine: "codex", sessionId: "a1", workspacePath: "/ws/Alpha" },
+        { engine: "codex", sessionId: "a2", workspacePath: "/ws/Alpha" },
+      ],
+      active: { engine: "codex", sessionId: "a1", workspacePath: "/ws/Alpha" },
+    });
+    render();
+    expect(text("keys")).toBe("codex/a1,codex/a2");
+  });
+
+  it("ignores cross-workspace session drops and allows same-workspace reorder", () => {
+    seedInterleaved();
+    render();
+    const reorder = (globalThis as unknown as {
+      __tabReorder: (a: string, b: string, before: boolean) => void;
+    }).__tabReorder;
+
+    // Cross-project: A2 onto B1 — ignored.
+    act(() => reorder("codex/a2", "codex/b1", true));
+    expect(useChatStore.getState().openTabs.map((t) => t.sessionId)).toEqual([
+      "a1",
+      "b1",
+      "a2",
+    ]);
+
+    // Same project: A2 before A1 — store splice by index (not clustered rewrite).
+    act(() => reorder("codex/a2", "codex/a1", true));
+    expect(useChatStore.getState().openTabs.map((t) => t.sessionId)).toEqual([
+      "a2",
+      "a1",
+      "b1",
+    ]);
+    expect(text("keys").split(",").filter((k) => k.startsWith("codex/"))).toEqual([
+      "codex/a2",
+      "codex/a1",
+      "codex/b1",
+    ]);
   });
 });
 
