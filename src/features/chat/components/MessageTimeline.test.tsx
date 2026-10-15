@@ -713,3 +713,94 @@ describe("real model id in MessageMeta", () => {
     expect(meta.textContent).not.toContain("fallback-should-not-win");
   });
 });
+
+describe("waiting vs settled A+C status rail", () => {
+  let container: HTMLDivElement;
+  let root: Root;
+
+  beforeEach(async () => {
+    await i18n.changeLanguage("zh");
+    container = document.createElement("div");
+    document.body.appendChild(container);
+    root = createRoot(container);
+  });
+
+  afterEach(async () => {
+    await act(async () => root.unmount());
+    container.remove();
+  });
+
+  const messages: Message[] = [
+    { seq: 1, role: "user", text: "hi", ts: null },
+    { seq: 2, role: "assistant", text: "hello there, a normal long enough reply", ts: null },
+  ];
+
+  it("shows a streaming blue rail with 响应中", async () => {
+    await act(async () => {
+      root.render(
+        <MessageTimeline
+          session={{ ...EMPTY_SESSION, messages: [{ seq: 1, role: "user", text: "hi", ts: null }] }}
+          streaming
+          onLoadEarlier={() => {}}
+          workspacePath="/ws"
+        />,
+      );
+    });
+    const live = container.querySelector('[data-testid="turn-live-status"]');
+    expect(live).not.toBeNull();
+    expect(live!.getAttribute("data-state")).toBe("streaming");
+    expect(live!.textContent).toContain("响应中");
+    const rail = live!.querySelector('[data-testid="turn-status-rail"]');
+    expect(rail?.className).toContain("color-status-streaming");
+    expect(container.querySelector('[data-testid="turn-end-status"]')).toBeNull();
+  });
+
+  it("shows a settled green rail with check + 已结束", async () => {
+    await act(async () => {
+      root.render(
+        <MessageTimeline
+          session={{
+            ...EMPTY_SESSION,
+            messages,
+            turnEndStatus: { at: 1, possiblyIncomplete: false },
+          }}
+          streaming={false}
+          onLoadEarlier={() => {}}
+          workspacePath="/ws"
+        />,
+      );
+    });
+    const ended = container.querySelector('[data-testid="turn-end-status"]');
+    expect(ended).not.toBeNull();
+    expect(ended!.getAttribute("data-state")).toBe("settled");
+    expect(ended!.textContent).toContain("已结束");
+    expect(ended!.querySelector('[data-testid="turn-ended-check"]')).not.toBeNull();
+    const rail = ended!.querySelector('[data-testid="turn-status-rail"]');
+    expect(rail?.className).toContain("color-status-unseen");
+    expect(container.querySelector('[data-testid="turn-incomplete-hint"]')).toBeNull();
+    expect(container.querySelector('[data-testid="turn-live-status"]')).toBeNull();
+  });
+
+  it("keeps the incomplete tip text under settled status, not in the composer", async () => {
+    await act(async () => {
+      root.render(
+        <MessageTimeline
+          session={{
+            ...EMPTY_SESSION,
+            messages: [
+              { seq: 1, role: "user", text: "hi", ts: null },
+              { seq: 2, role: "assistant", text: "回代码取原", ts: null },
+            ],
+            turnEndStatus: { at: 1, possiblyIncomplete: true },
+          }}
+          streaming={false}
+          onLoadEarlier={() => {}}
+          workspacePath="/ws"
+        />,
+      );
+    });
+    const hint = container.querySelector('[data-testid="turn-incomplete-hint"]');
+    expect(hint?.textContent).toBe("回复可能不完整，可再发继续");
+    expect(container.querySelector('[data-testid="turn-end-status"]')?.textContent).toContain("已结束");
+  });
+});

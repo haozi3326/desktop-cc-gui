@@ -257,3 +257,46 @@ describe("代理快捷开关文案", () => {
     expect(container.querySelector('button[aria-label="chat.proxyOff"]')).toBeNull();
   });
 });
+
+describe("Composer streaming accent border", () => {
+  let container: HTMLDivElement;
+  let root: Root;
+
+  beforeEach(() => {
+    container = document.createElement("div");
+    document.body.appendChild(container);
+    root = createRoot(container);
+  });
+
+  afterEach(async () => {
+    await act(async () => root.unmount());
+    container.remove();
+  });
+
+  it("uses the streaming border color while a turn is in flight, then reverts", async () => {
+    await act(async () => {
+      root.render(
+        <HashRouter>
+          <Composer value="" onValueChange={() => {}} streaming />
+        </HashRouter>,
+      );
+    });
+    const box = container.querySelector<HTMLElement>("[data-streaming='true']");
+    expect(box).not.toBeNull();
+    expect(box!.className).toContain("color-status-streaming");
+    expect(box!.className).not.toContain("border-border-button-default");
+
+    await act(async () => {
+      root.render(
+        <HashRouter>
+          <Composer value="" onValueChange={() => {}} streaming={false} />
+        </HashRouter>,
+      );
+    });
+    const settled = container.querySelector<HTMLElement>(".rounded-2xl.border");
+    expect(settled).not.toBeNull();
+    expect(settled!.getAttribute("data-streaming")).toBeNull();
+    expect(settled!.className).toContain("border-border-button-default");
+    expect(settled!.className).not.toContain("color-status-streaming");
+  });
+});

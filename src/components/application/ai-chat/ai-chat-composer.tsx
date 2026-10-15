@@ -273,12 +273,15 @@ export function Composer({
     <div
       ref={wrapperRef}
       className={cx(
-        "relative flex w-full flex-col gap-1 rounded-2xl border p-2 shadow-xs",
+        "relative flex w-full flex-col gap-1 rounded-2xl border p-2 shadow-xs transition-colors duration-150",
         isCollapsed
           ? "h-2 gap-0 border-transparent bg-transparent p-0 shadow-none"
-          : "border-border-button-default bg-background-tertiary-default",
+          : streaming
+            ? "border-[var(--color-status-streaming)] bg-background-tertiary-default"
+            : "border-border-button-default bg-background-tertiary-default",
         className,
       )}
+      data-streaming={streaming ? "true" : undefined}
     >
       <ComposerResizeHandle
         getHandleProps={getHandleProps}

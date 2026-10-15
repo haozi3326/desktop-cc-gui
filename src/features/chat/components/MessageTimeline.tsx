@@ -758,40 +758,64 @@ export const MessageTimeline = memo(function MessageTimeline({
                   session.compaction?.automatic ? (
                     <CompactionCurtain />
                   ) : session.compaction ? null : streaming ? (
-                    <AgentThinking
-                      variant="wave"
-                      label={t("chat.thinking")}
-                      className="py-2"
-                      startedAt={session.turnStartedAt ?? undefined}
-                      durationFormatter={(d) => t("chat.metaDuration", { duration: d })}
-                      model={activeModelFormatted}
-                      effort={activeEffortFormatted}
-                      usage={liveUsage}
-                      metaExtra={<ResponseCheckBadge check={session.responseCheck} />}
-                      retry={
-                        session.retry
-                          ? session.retry.max > 0
-                            ? t("chat.retrying", {
-                                attempt: session.retry.attempt,
-                                max: session.retry.max,
-                              })
-                            : t("chat.retryingNoMax", { attempt: session.retry.attempt })
-                          : null
-                      }
-                      retryDetail={session.retry?.message || null}
-                    />
+                    <div
+                      className="flex items-stretch gap-2.5 py-2"
+                      data-testid="turn-live-status"
+                      data-state="streaming"
+                      role="status"
+                    >
+                      <span
+                        aria-hidden
+                        data-testid="turn-status-rail"
+                        className="w-0.5 shrink-0 self-stretch rounded-full bg-[var(--color-status-streaming)]"
+                      />
+                      <AgentThinking
+                        variant="wave"
+                        label={t("chat.thinking")}
+                        startedAt={session.turnStartedAt ?? undefined}
+                        durationFormatter={(d) => t("chat.metaDuration", { duration: d })}
+                        model={activeModelFormatted}
+                        effort={activeEffortFormatted}
+                        usage={liveUsage}
+                        metaExtra={<ResponseCheckBadge check={session.responseCheck} />}
+                        retry={
+                          session.retry
+                            ? session.retry.max > 0
+                              ? t("chat.retrying", {
+                                  attempt: session.retry.attempt,
+                                  max: session.retry.max,
+                                })
+                              : t("chat.retryingNoMax", { attempt: session.retry.attempt })
+                            : null
+                        }
+                        retryDetail={session.retry?.message || null}
+                      />
+                    </div>
                   ) : session.turnEndStatus ? (
                     <div
                       className="flex flex-col gap-0.5 py-2"
                       data-testid="turn-end-status"
+                      data-state="settled"
                       role="status"
                     >
-                      <span className="text-caption-1-medium text-text-tertiary">
-                        {t("chat.turnEnded")}
-                      </span>
+                      <div className="flex items-stretch gap-2.5">
+                        <span
+                          aria-hidden
+                          data-testid="turn-status-rail"
+                          className="w-0.5 shrink-0 self-stretch rounded-full bg-[var(--color-status-unseen)]/70"
+                        />
+                        <span className="flex items-center gap-1.5 text-caption-1-medium text-text-tertiary">
+                          <Check
+                            className="size-3.5 shrink-0 text-[var(--color-status-unseen)]"
+                            aria-hidden
+                            data-testid="turn-ended-check"
+                          />
+                          {t("chat.turnEnded")}
+                        </span>
+                      </div>
                       {session.turnEndStatus.possiblyIncomplete ? (
                         <span
-                          className="text-caption-1-regular text-text-secondary"
+                          className="pl-3 text-caption-1-regular text-text-secondary"
                           data-testid="turn-incomplete-hint"
                         >
                           {t("chat.possiblyIncomplete")}
