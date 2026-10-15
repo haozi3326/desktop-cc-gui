@@ -182,8 +182,8 @@ export function SidebarBrandRow({ onOpenSearch }: { onOpenSearch?: () => void })
   return (
     <div className="flex w-full flex-row items-center justify-between">
       <span className="flex items-center gap-2 px-1">
-        <img src="/app-icon.png" alt="CC GUI" className="size-7 rounded-lg" />
-        <span className="text-headline-medium text-text-primary">CC GUI</span>
+        <img src="/app-icon.png" alt="舵轮" className="size-7 rounded-lg" />
+        <span className="text-headline-medium text-text-primary">舵轮</span>
       </span>
       <SearchPaletteButton onOpen={onOpenSearch} />
     </div>

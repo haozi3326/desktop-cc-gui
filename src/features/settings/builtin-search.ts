@@ -353,7 +353,7 @@ export const builtinSearchEntries: SettingsSearchEntry[] = [
 
   // 检查更新：品牌行没有译文（labelText），检查动作行与页标题同名，不再重复
   // 一层面包屑。
-  { page: "update", anchor: "appVersion", labelText: "CC GUI" },
+  { page: "update", anchor: "appVersion", labelText: "舵轮" },
   {
     page: "update",
     anchor: "checkUpdates",

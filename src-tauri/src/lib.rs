@@ -297,7 +297,7 @@ pub fn run() {
                 "main",
                 tauri::WebviewUrl::App("index.html".into()),
             )
-            .title("CC GUI")
+            .title("舵轮")
             .inner_size(1400.0, 900.0)
             .min_inner_size(900.0, 600.0);
             #[cfg(target_os = "macos")]
