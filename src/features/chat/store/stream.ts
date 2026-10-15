@@ -1,5 +1,6 @@
 import type { Message, TodosPayload } from "@/lib/ipc";
 import type { ResponseCheckState } from "../response-check";
+import type { TurnEndStatus } from "../turn-end-status";
 
 /**
  * Streaming buffers and bySession write helpers. Leaf module: functions are
@@ -75,6 +76,9 @@ export interface SessionState {
    *  (`"${planId}:${revision}"`): the approval dock mounts for it again.
    *  Pure UI state — the backend record stays `deferred` either way. */
   planReviewResume: string | null;
+  /** After a turn settles: timeline shows 「已结束」 (and an incomplete tip
+   *  when the last assistant text looks stubby) until the next send. */
+  turnEndStatus: TurnEndStatus | null;
 }
 
 export const EMPTY_SESSION: SessionState = {
@@ -96,6 +100,7 @@ export const EMPTY_SESSION: SessionState = {
   queue: [],
   interrupted: false,
   planReviewResume: null,
+  turnEndStatus: null,
 };
 
 /** The model one session runs with, most specific first:

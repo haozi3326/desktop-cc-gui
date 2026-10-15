@@ -574,7 +574,8 @@ export const MessageTimeline = memo(function MessageTimeline({
   // The tail item is the turn-status indicator (or the grey compaction line).
   // A compaction keeps it mounted even between sends, so the line does not
   // blink out in the gap between the compact turn and the resume turn.
-  const count = rows.length + (streaming || session.compaction ? 1 : 0);
+  const showTurnEnd = Boolean(session.turnEndStatus) && !streaming && !session.compaction;
+  const count = rows.length + (streaming || session.compaction || showTurnEnd ? 1 : 0);
 
   const virtualizer = useVirtualizer({
     count,
@@ -727,7 +728,7 @@ export const MessageTimeline = memo(function MessageTimeline({
                   // engine's own mid-turn compaction — a flag with no row.
                   session.compaction?.automatic ? (
                     <CompactionCurtain />
-                  ) : session.compaction ? null : (
+                  ) : session.compaction ? null : streaming ? (
                     <AgentThinking
                       variant="wave"
                       label={t("chat.thinking")}
@@ -750,7 +751,25 @@ export const MessageTimeline = memo(function MessageTimeline({
                       }
                       retryDetail={session.retry?.message || null}
                     />
-                  )
+                  ) : session.turnEndStatus ? (
+                    <div
+                      className="flex flex-col gap-0.5 py-2"
+                      data-testid="turn-end-status"
+                      role="status"
+                    >
+                      <span className="text-caption-1-medium text-text-tertiary">
+                        {t("chat.turnEnded")}
+                      </span>
+                      {session.turnEndStatus.possiblyIncomplete ? (
+                        <span
+                          className="text-caption-1-regular text-text-secondary"
+                          data-testid="turn-incomplete-hint"
+                        >
+                          {t("chat.possiblyIncomplete")}
+                        </span>
+                      ) : null}
+                    </div>
+                  ) : null
                 ) : (
                   <TimelineRowView
                     row={rows[item.index]}

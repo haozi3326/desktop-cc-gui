@@ -25,6 +25,7 @@ import {
   settleLiveRows,
   untrackRun,
 } from "./stream";
+import { buildTurnEndStatus } from "../turn-end-status";
 import { mergeUsage, parseUsage } from "../usage";
 import {
   bindRunLifecycle,
@@ -324,6 +325,8 @@ export function createMessagingActions(
         turnUsage: null,
         // The check belongs to this run: the launch event reopens it.
         responseCheck: null,
+        // New turn: clear the previous settle strip so 「已结束」 does not linger.
+        turnEndStatus: null,
       },
     );
     // A pending switch prepares its handoff in beforeSwitch, which must run
@@ -668,6 +671,7 @@ export function createMessagingActions(
             interrupted: true,
             turnStartedAt: null,
             retry: null,
+            turnEndStatus: buildTurnEndStatus(messages),
           },
         },
         streamingByKey: setStreamingFlag(s.streamingByKey, key, false),

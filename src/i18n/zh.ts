@@ -259,6 +259,8 @@ export const zh = {
     archivedWorkspaces: "已归档 ({{count}})",
     selectSession: "选择或新建一个会话开始",
     thinking: "响应中",
+    turnEnded: "已结束",
+    possiblyIncomplete: "回复可能不完整，可再发继续",
     retrying: "重试中 {{attempt}}/{{max}}",
     retryingNoMax: "重试中 {{attempt}}",
     thinkingProcess: "思考过程",

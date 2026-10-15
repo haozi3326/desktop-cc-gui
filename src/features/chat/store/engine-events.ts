@@ -34,6 +34,7 @@ import {
   updatePendingStreamModel,
   type ToolMessageInput,
 } from "./stream";
+import { buildTurnEndStatus } from "../turn-end-status";
 import type { ChatStore } from "../store";
 import {
   ASK_OTHER_OPTION,
@@ -1257,6 +1258,7 @@ function onError(
           turnStartedAt: null,
           turnUsage: null,
           settledRunIds: rememberSettledRun(cur, event.runId),
+          turnEndStatus: buildTurnEndStatus(messages),
         },
       },
       streamingByKey: setStreamingFlag(s.streamingByKey, key, false),
@@ -1792,6 +1794,7 @@ function onDone(event: ChatEngineEvent, key: string, deps: EngineEventDeps) {
           turnUsage: null,
           interrupted: false,
           settledRunIds: rememberSettledRun(cur, event.runId),
+          turnEndStatus: buildTurnEndStatus(messages),
         },
       },
       streamingByKey: setStreamingFlag(s.streamingByKey, key, false),

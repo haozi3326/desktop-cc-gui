@@ -274,6 +274,8 @@ export const en: Messages = {
     archivedWorkspaces: "Archived ({{count}})",
     selectSession: "Select or start a session",
     thinking: "Responding",
+    turnEnded: "Ended",
+    possiblyIncomplete: "Reply may be incomplete — send again to continue",
     retrying: "Retrying {{attempt}}/{{max}}",
     retryingNoMax: "Retrying {{attempt}}",
     thinkingProcess: "Thinking process",
