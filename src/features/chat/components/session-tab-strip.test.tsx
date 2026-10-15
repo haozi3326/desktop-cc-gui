@@ -297,3 +297,92 @@ it("renders pre-clustered multi-workspace tabs with chrome (no second cluster)",
   expect(node.querySelectorAll('[data-tab-group-separator="workspace"]')).toHaveLength(1);
 });
 
+it("chip click selects the group's first session tab", async () => {
+  const onSelect = vi.fn();
+  await render({
+    onSelect,
+    tabs: [
+      {
+        key: "a1",
+        label: "A1",
+        streaming: false,
+        workspacePath: "/ws/Alpha",
+        workspaceShortName: "Alpha",
+      },
+      {
+        key: "a2",
+        label: "A2",
+        streaming: false,
+        workspacePath: "/ws/Alpha",
+        workspaceShortName: "Alpha",
+      },
+      {
+        key: "b1",
+        label: "B1",
+        streaming: false,
+        workspacePath: "/ws/Beta",
+        workspaceShortName: "Beta",
+      },
+      {
+        key: "c1",
+        label: "C1",
+        streaming: false,
+        workspacePath: "/ws/Gamma",
+        workspaceShortName: "Gamma",
+      },
+      {
+        key: "c2",
+        label: "C2",
+        streaming: false,
+        workspacePath: "/ws/Gamma",
+        workspaceShortName: "Gamma",
+      },
+    ],
+  });
+
+  const chips = [...node.querySelectorAll<HTMLButtonElement>("[data-tab-workspace-chip]")];
+  expect(chips).toHaveLength(3);
+  expect(chips.map((c) => c.getAttribute("data-tab-workspace-chip-target"))).toEqual([
+    "a1",
+    "b1",
+    "c1",
+  ]);
+
+  await act(async () => chips[1].click());
+  expect(onSelect).toHaveBeenCalledWith("b1");
+  await act(async () => chips[2].click());
+  expect(onSelect).toHaveBeenCalledWith("c1");
+  await act(async () => chips[0].click());
+  expect(onSelect).toHaveBeenCalledWith("a1");
+});
+
+it("workspace chips are buttons with accessible names", async () => {
+  await render({
+    tabs: [
+      {
+        key: "a1",
+        label: "A1",
+        streaming: false,
+        workspacePath: "/ws/Alpha",
+        workspaceShortName: "Alpha",
+      },
+      {
+        key: "b1",
+        label: "B1",
+        streaming: false,
+        workspacePath: "/ws/Beta",
+        workspaceShortName: "Beta",
+      },
+    ],
+  });
+
+  const chips = [...node.querySelectorAll("[data-tab-workspace-chip]")];
+  expect(chips).toHaveLength(2);
+  for (const chip of chips) {
+    expect(chip.tagName).toBe("BUTTON");
+    expect(chip.getAttribute("type")).toBe("button");
+    // Mock t returns the key; production interpolates {{name}}.
+    expect(chip.getAttribute("aria-label")).toBe("chat.focusWorkspaceTabs");
+    expect(chip.getAttribute("title")).toMatch(/Alpha|Beta/);
+  }
+});

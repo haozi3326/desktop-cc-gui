@@ -68,6 +68,7 @@ export const zh = {
     newChat: "新对话",
     newSession: "新建会话",
     newBrowser: "新建浏览器",
+    focusWorkspaceTabs: "跳到 {{name}} 的页签",
     closeAllTabs: "全部关闭",
     closeInactiveTabs: "关闭非活跃窗口",
     collapseSidebar: "收起侧边栏",

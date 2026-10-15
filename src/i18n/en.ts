@@ -72,6 +72,7 @@ export const en: Messages = {
     newChat: "New chat",
     newSession: "New session",
     newBrowser: "New browser",
+    focusWorkspaceTabs: "Go to {{name}} tabs",
     closeAllTabs: "Close All",
     closeInactiveTabs: "Close Others",
     collapseSidebar: "Collapse sidebar",

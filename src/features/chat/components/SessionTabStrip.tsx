@@ -103,16 +103,30 @@ function TabGroupSeparator({ kind }: { kind?: "workspace" | "surface" }) {
   );
 }
 
-/** Optional short-name chip ahead of a workspace cluster (≥2 workspaces). */
-function WorkspaceGroupChip({ name }: { name: string }) {
+/** Clickable short-name chip ahead of a workspace cluster (≥2 workspaces).
+ *  Selects the group's first session tab; active-tab scroll-into-view follows. */
+function WorkspaceGroupChip({
+  name,
+  firstTabKey,
+  onSelect,
+}: {
+  name: string;
+  firstTabKey: string;
+  onSelect: (key: string) => void;
+}) {
+  const { t } = useTranslation();
   return (
-    <span
+    <button
+      type="button"
       data-tab-workspace-chip=""
+      data-tab-workspace-chip-target={firstTabKey}
       title={name}
-      className="ml-0.5 mr-0.5 max-w-[4.5rem] shrink-0 truncate rounded px-1 py-0.5 text-caption-1 text-text-tertiary"
+      aria-label={t("chat.focusWorkspaceTabs", { name })}
+      onClick={() => onSelect(firstTabKey)}
+      className="ml-0.5 mr-0.5 max-w-[4.5rem] shrink-0 truncate rounded px-1 py-0.5 text-caption-1 text-text-tertiary hover:bg-background-secondary-hover hover:text-text-secondary"
     >
       {name}
-    </span>
+    </button>
   );
 }
 
@@ -346,8 +360,12 @@ function TabListBody({
       {groups.map((group, gi) => (
         <span key={`ws:${group.workspacePath}:${gi}`} className="flex min-w-0 items-center gap-1">
           {showChrome && gi > 0 ? <TabGroupSeparator kind="workspace" /> : null}
-          {showChrome && group.shortName ? (
-            <WorkspaceGroupChip name={group.shortName} />
+          {showChrome && group.shortName && group.tabs[0] ? (
+            <WorkspaceGroupChip
+              name={group.shortName}
+              firstTabKey={group.tabs[0].key}
+              onSelect={onSelect}
+            />
           ) : null}
           {group.tabs.map((tab) => renderTab(tab))}
         </span>
