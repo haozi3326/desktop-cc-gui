@@ -61,7 +61,7 @@ export function ComposerToolbar({
           onClick={onSend}
           className={cx(
             "flex size-9 shrink-0 cursor-pointer items-center justify-center rounded-full bg-button-primary p-2 transition-opacity duration-200 ease",
-            disabled && "cursor-not-allowed opacity-40",
+            disabled && "cursor-not-allowed opacity-60",
           )}
         >
           <ArrowUp className="size-5 text-text-white" aria-hidden />

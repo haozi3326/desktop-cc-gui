@@ -276,7 +276,7 @@ export function Composer({
         "relative flex w-full flex-col gap-1 rounded-2xl border p-2 shadow-xs",
         isCollapsed
           ? "h-2 gap-0 border-transparent bg-transparent p-0 shadow-none"
-          : "border-separator-border bg-background-primary-default",
+          : "border-border-button-default bg-background-tertiary-default",
         className,
       )}
     >
