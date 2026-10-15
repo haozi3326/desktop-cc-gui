@@ -47,7 +47,60 @@ function isBashTool(name: string): boolean {
   );
 }
 
-/** Git Diff-style file change viewer. */
+/** Max diff rows mounted at once — keeps large edit payloads off the DOM. */
+export const DIFF_PAGE_SIZE = 120;
+
+/** Visible [start, end) for a fixed-size diff page (clamped). */
+export function diffPageWindow(
+  total: number,
+  page: number,
+  pageSize: number = DIFF_PAGE_SIZE,
+): { start: number; end: number; lastPage: number; page: number } {
+  const lastPage = Math.max(0, Math.ceil(Math.max(0, total) / pageSize) - 1);
+  const safePage = Math.min(Math.max(0, page), lastPage);
+  const start = safePage * pageSize;
+  const end = Math.min(start + pageSize, Math.max(0, total));
+  return { start, end, lastPage, page: safePage };
+}
+
+const DiffLineRow = memo(function DiffLineRow({
+  line,
+  index,
+}: {
+  line: DiffLine;
+  index: number;
+}) {
+  const isAdd = line.type === "add";
+  const isDel = line.type === "del";
+  const isHdr = line.type === "header";
+  return (
+    <div
+      data-diff-line={index}
+      className={cx(
+        "flex items-baseline px-2 py-[1px] hover:bg-background-secondary-hover/40",
+        isAdd && "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300",
+        isDel && "bg-red-500/10 text-red-700 dark:text-red-300",
+        isHdr && "bg-background-tertiary-default/50 text-sky-600 dark:text-sky-400 font-semibold",
+      )}
+    >
+      <span className="w-8 shrink-0 select-none text-right pr-2 text-[10px] text-text-quaternary tabular-nums">
+        {line.oldLineNo ?? ""}
+      </span>
+      <span className="w-8 shrink-0 select-none text-right pr-2 text-[10px] text-text-quaternary tabular-nums">
+        {line.newLineNo ?? ""}
+      </span>
+      <span className="w-4 shrink-0 select-none text-center font-bold">
+        {isAdd ? "+" : isDel ? "-" : isHdr ? "@" : " "}
+      </span>
+      <span className="flex-1 whitespace-pre-wrap break-all pl-1">
+        {line.text || " "}
+      </span>
+    </div>
+  );
+});
+
+/** Git Diff-style file change viewer. Large diffs page in fixed windows so
+ * expanding a tool payload cannot mount thousands of line nodes at once. */
 export const FileDiffViewer = memo(function FileDiffViewer({
   filePath,
   oldString,
@@ -57,6 +110,7 @@ export const FileDiffViewer = memo(function FileDiffViewer({
 }: EditArgs) {
   const { t } = useTranslation();
   const { copied, copy } = useCopied();
+  const [selectedPage, setSelectedPage] = useState(0);
 
   const diffLines = useMemo<DiffLine[]>(() => {
     if (patch) return parsePatchLines(patch);
@@ -87,7 +141,15 @@ export const FileDiffViewer = memo(function FileDiffViewer({
     return oldString || "";
   }, [newString, content, patch, oldString]);
 
+  const { start, end, lastPage, page } = diffPageWindow(diffLines.length, selectedPage);
+  const visibleLines = useMemo(
+    () => diffLines.slice(start, end),
+    [diffLines, start, end],
+  );
+
   const fileName = filePath ? filePath.split(/[\\/]/).pop() : null;
+  const pageButtonClass =
+    "cursor-pointer rounded px-2 py-1 text-caption-1-regular text-text-secondary hover:bg-background-tertiary-hover disabled:cursor-default disabled:opacity-40";
 
   return (
     <div className="mt-1.5 overflow-hidden rounded-md border border-border-secondary bg-background-primary-default text-[12px] font-mono leading-[1.6]">
@@ -121,45 +183,45 @@ export const FileDiffViewer = memo(function FileDiffViewer({
         </button>
       </div>
 
-      {/* Diff Content */}
-      <div className="max-h-72 overflow-auto py-1">
+      {lastPage > 0 && (
+        <nav
+          aria-label={t("chat.diffHistoryPages")}
+          className="flex flex-wrap items-center gap-1 border-b border-border-secondary bg-background-secondary-default/60 px-2 py-1"
+        >
+          <button
+            type="button"
+            className={pageButtonClass}
+            disabled={page === 0}
+            onClick={() => setSelectedPage(page - 1)}
+          >
+            {t("chat.diffPreviousPage")}
+          </button>
+          <span className="text-caption-1-regular text-text-tertiary" aria-live="off">
+            {t("chat.diffPageRange", { start: start + 1, end, total: diffLines.length })}
+          </span>
+          <button
+            type="button"
+            className={pageButtonClass}
+            disabled={page === lastPage}
+            onClick={() => setSelectedPage(page + 1)}
+          >
+            {page < lastPage
+              ? t("chat.diffMoreLines", { count: diffLines.length - end })
+              : t("chat.diffNextPage")}
+          </button>
+        </nav>
+      )}
+
+      {/* Diff Content — only the current page is mounted */}
+      <div className="max-h-72 overflow-auto py-1" data-diff-body="">
         {diffLines.length === 0 ? (
           <div className="px-3 py-2 text-text-tertiary italic">
             {t("chat.diffEmpty")}
           </div>
         ) : (
-          diffLines.map((line, idx) => {
-            const isAdd = line.type === "add";
-            const isDel = line.type === "del";
-            const isHdr = line.type === "header";
-            return (
-              <div
-                key={idx}
-                className={cx(
-                  "flex items-baseline px-2 py-[1px] hover:bg-background-secondary-hover/40",
-                  isAdd && "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300",
-                  isDel && "bg-red-500/10 text-red-700 dark:text-red-300",
-                  isHdr && "bg-background-tertiary-default/50 text-sky-600 dark:text-sky-400 font-semibold"
-                )}
-              >
-                {/* Line Numbers */}
-                <span className="w-8 shrink-0 select-none text-right pr-2 text-[10px] text-text-quaternary tabular-nums">
-                  {line.oldLineNo ?? ""}
-                </span>
-                <span className="w-8 shrink-0 select-none text-right pr-2 text-[10px] text-text-quaternary tabular-nums">
-                  {line.newLineNo ?? ""}
-                </span>
-                {/* Sign */}
-                <span className="w-4 shrink-0 select-none text-center font-bold">
-                  {isAdd ? "+" : isDel ? "-" : isHdr ? "@" : " "}
-                </span>
-                {/* Line text */}
-                <span className="flex-1 whitespace-pre-wrap break-all pl-1">
-                  {line.text || " "}
-                </span>
-              </div>
-            );
-          })
+          visibleLines.map((line, i) => (
+            <DiffLineRow key={start + i} line={line} index={start + i} />
+          ))
         )}
       </div>
     </div>
