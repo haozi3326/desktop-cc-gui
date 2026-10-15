@@ -23,6 +23,7 @@ import { createAnchorRowsBuilder } from "./timeline-anchors";
 import { buildRows, collectToolKeys, rowKey, type TimelineRow } from "./timeline-rows";
 import { formatDuration } from "./format-duration";
 import { modelDisplayName } from "@/features/settings/usage-model";
+import { stripLeadingModelModeTags } from "./prompt-display-tags";
 import { ProcessDisclosure, type ProcessSearchTarget } from "./ProcessDisclosure";
 import { ResponseCheckBadge } from "./response-check-badge";
 import { CollapsibleMessage } from "./CollapsibleMessage";
@@ -54,6 +55,7 @@ const TimelineRowView = memo(function TimelineRowView({
   thinkingAutoCollapse,
   seenTools,
   searchTarget,
+  fallbackModel,
 }: {
   row: TimelineRow;
   workspacePath: string;
@@ -66,6 +68,8 @@ const TimelineRowView = memo(function TimelineRowView({
   thinkingAutoCollapse: boolean;
   seenTools: Set<string>;
   searchTarget?: ProcessSearchTarget;
+  /** Session activeModel when message.model is empty (stream tail already uses this). */
+  fallbackModel?: string | null;
 }) {
   // Plugin-defined row kinds (plan §4.2 #5) dispatch to the registered
   // renderer before the builtin switch below; builtin kinds never hit this
@@ -105,6 +109,7 @@ const TimelineRowView = memo(function TimelineRowView({
       message={row.message}
       workspacePath={workspacePath}
       turnFinal={row.turnFinal && !turnLive}
+      fallbackModel={fallbackModel}
     />
   );
 });
@@ -175,8 +180,18 @@ function formatUsage(usage: unknown): string | null {
   return parts.join(" ");
 }
 
-/** Passive per-message facts, revealed on message hover: time · duration · token usage · model · effort. */
-function MessageMeta({ message }: { message: Message }) {
+/** Passive per-message facts: time · duration · token usage · model · effort.
+ *  Always weakly visible (tertiary caption) so the real model id is not buried
+ *  behind hover — prompt headers like `[模型：coding-claude]` must not be the
+ *  only label the user sees. Falls back to session.activeModel when the row
+ *  has no stamped model (same source the streaming tail already uses). */
+function MessageMeta({
+  message,
+  fallbackModel,
+}: {
+  message: Message;
+  fallbackModel?: string | null;
+}) {
   const { t } = useTranslation();
   const effortText = useMemo(() => {
     if (!message.effort) return null;
@@ -192,10 +207,11 @@ function MessageMeta({ message }: { message: Message }) {
   }, [message.durationMs, t]);
 
   const modelFormatted = useMemo(() => {
-    return message.model
-      ? t("chat.metaModel", { model: modelDisplayName(message.model) })
+    const raw = message.model || fallbackModel || null;
+    return raw
+      ? t("chat.metaModel", { model: modelDisplayName(raw) })
       : null;
-  }, [message.model, t]);
+  }, [message.model, fallbackModel, t]);
 
   const parts = [
     formatMessageTime(message.ts),
@@ -207,7 +223,10 @@ function MessageMeta({ message }: { message: Message }) {
   const check = message.responseCheck ?? null;
   if (parts.length === 0 && !check) return null;
   return (
-    <span className="text-caption-1-regular tabular-nums text-text-tertiary opacity-0 transition-opacity duration-150 group-hover:opacity-100">
+    <span
+      data-testid="message-meta"
+      className="text-caption-1-regular tabular-nums text-text-tertiary"
+    >
       {parts.join(" · ")}
       {/* Recorded at settle: the response check outlives the tail indicator. */}
       {check && (
@@ -336,10 +355,13 @@ export const MessageRow = memo(function MessageRow({
   message,
   workspacePath,
   turnFinal,
+  fallbackModel,
 }: {
   message: Message;
   workspacePath: string;
   turnFinal: boolean;
+  /** session.activeModel when message.model is missing. */
+  fallbackModel?: string | null;
 }) {
   // A live row's text grows per store flush; a full markdown reparse per
   // flush scales linearly with reply length (~30ms at 32KB) and starves the
@@ -348,6 +370,13 @@ export const MessageRow = memo(function MessageRow({
   // for the reveal more than they need an extra parse).
   const parseMs = useLiveParseInterval(message.live === true, message.text.length);
   const text = useThrottled(message.text, parseMs);
+  // Display-only: hide prompt `[模型：…]` / `[模式：…]` headers so they cannot
+  // masquerade as the real model label. Copy + storage keep the original.
+  const displayText = useMemo(
+    () =>
+      message.role === "assistant" ? stripLeadingModelModeTags(text) : text,
+    [message.role, text],
+  );
   if (message.role === "grant") {
     // Permission-denial card: actionable directory grant, not a chat bubble.
     return <GrantCard message={message} />;
@@ -367,11 +396,11 @@ export const MessageRow = memo(function MessageRow({
   }
   return (
     <div className="group flex flex-col text-left">
-      <Markdown text={text} workspacePath={workspacePath} streaming={message.live} />
+      <Markdown text={displayText} workspacePath={workspacePath} streaming={message.live} />
       {turnFinal && (
         <div className="mt-1 flex items-center gap-2">
           <MessageActions text={message.text} />
-          <MessageMeta message={message} />
+          <MessageMeta message={message} fallbackModel={fallbackModel} />
         </div>
       )}
     </div>
@@ -782,6 +811,7 @@ export const MessageTimeline = memo(function MessageTimeline({
                     thinkingAutoCollapse={thinkingAutoCollapse}
                     seenTools={seenTools}
                     searchTarget={item.index === currentSearchRow ? processSearchTarget : undefined}
+                    fallbackModel={activeModel}
                   />
                 )}
               </div>

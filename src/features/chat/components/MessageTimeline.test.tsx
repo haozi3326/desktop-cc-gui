@@ -611,3 +611,105 @@ describe("chat column width (宽幕布)", () => {
     expect(inner.className).toContain("max-w-[750px]");
   });
 });
+
+describe("real model id in MessageMeta", () => {
+  let container: HTMLDivElement;
+  let root: Root;
+
+  beforeEach(async () => {
+    await i18n.changeLanguage("zh");
+    container = document.createElement("div");
+    document.body.appendChild(container);
+    root = createRoot(container);
+  });
+
+  afterEach(async () => {
+    await act(async () => root.unmount());
+    container.remove();
+  });
+
+  it("always shows the stamped model (not hover-only)", async () => {
+    await act(async () => {
+      root.render(
+        <MessageRow
+          message={{
+            seq: 2,
+            role: "assistant",
+            text: "ok",
+            ts: null,
+            model: "deepseek-flash",
+          }}
+          workspacePath="/ws"
+          turnFinal
+        />,
+      );
+    });
+    const meta = container.querySelector('[data-testid="message-meta"]');
+    expect(meta).not.toBeNull();
+    expect(meta!.className).not.toContain("opacity-0");
+    expect(meta!.className).not.toContain("group-hover:opacity-100");
+    expect(meta!.textContent).toContain("模型 deepseek-flash");
+  });
+
+  it("keeps the real model when the body carries a fake [模型：] header", async () => {
+    await act(async () => {
+      root.render(
+        <MessageRow
+          message={{
+            seq: 2,
+            role: "assistant",
+            text: "[后端开发][模式：需求澄清][模型：coding-claude]\n\n实际回复",
+            ts: null,
+            model: "deepseek-flash",
+          }}
+          workspacePath="/ws"
+          turnFinal
+        />,
+      );
+    });
+    const meta = container.querySelector('[data-testid="message-meta"]')!;
+    expect(meta.textContent).toContain("模型 deepseek-flash");
+    expect(meta.textContent).not.toContain("coding-claude");
+    // Display strips the fake headers; copy still gets the stored original.
+    expect(container.textContent).not.toContain("[模型：coding-claude]");
+    expect(container.textContent).not.toContain("[模式：需求澄清]");
+    expect(container.textContent).toContain("实际回复");
+  });
+
+  it("falls back to session activeModel when message.model is empty", async () => {
+    await act(async () => {
+      root.render(
+        <MessageRow
+          message={{ seq: 2, role: "assistant", text: "ok", ts: null }}
+          workspacePath="/ws"
+          turnFinal
+          fallbackModel="deepseek-flash"
+        />,
+      );
+    });
+    const meta = container.querySelector('[data-testid="message-meta"]')!;
+    expect(meta.textContent).toContain("模型 deepseek-flash");
+  });
+
+  it("prefers message.model over fallbackModel", async () => {
+    await act(async () => {
+      root.render(
+        <MessageRow
+          message={{
+            seq: 2,
+            role: "assistant",
+            text: "ok",
+            ts: null,
+            model: "served-real",
+          }}
+          workspacePath="/ws"
+          turnFinal
+          fallbackModel="fallback-should-not-win"
+        />,
+      );
+    });
+    const meta = container.querySelector('[data-testid="message-meta"]')!;
+    expect(meta.textContent).toContain("模型 served-real");
+    expect(meta.textContent).not.toContain("fallback-should-not-win");
+  });
+});
