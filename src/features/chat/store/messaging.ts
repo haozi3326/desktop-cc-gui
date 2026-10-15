@@ -236,9 +236,8 @@ export function createMessagingActions(
     }
     // Resolve BEFORE the optimistic rows land: the patch below writes
     // activeModel, and a resolver reading it afterwards would see its own
-    // write instead of the session's history.
-    // The session's own model, not the engine default: continuing a
-    // conversation keeps running the model that conversation uses.
+    // write. Prefer tab pick / GUI-remembered activeModel / engine default —
+    // never the history served model (gateways rewrite that).
     const model =
       resolveSessionModel(tab, get().bySession[key], get().models[engine]) ||
       null;

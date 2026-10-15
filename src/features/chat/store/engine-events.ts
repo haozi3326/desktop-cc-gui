@@ -16,6 +16,7 @@ import {
   applyStreamParts,
   bufferStreamPart,
   drainPending,
+  isNoChannelRetryMessage,
   migratePendingStream,
   moveRetryingFlag,
   moveStreamingFlag,
@@ -34,6 +35,7 @@ import {
   updatePendingStreamModel,
   type ToolMessageInput,
 } from "./stream";
+import i18n from "@/lib/i18n";
 import { buildTurnEndStatus } from "../turn-end-status";
 import type { ChatStore } from "../store";
 import {
@@ -1658,6 +1660,10 @@ function onWarn(event: ChatEngineEvent, key: string, deps: EngineEventDeps) {
  * line as "重试中 x/y" — deliberately NOT the error banner: the CLI is
  * backing off and will re-issue the request, so this is progress. An attempt
  * of 0 (or a retry-end event) clears it; so does the next content event.
+ *
+ * Exception: "No available channel" / model_not_found will never recover by
+ * retrying — fail fast with a human line and kill the CLI run so the UI does
+ * not hang on "重试中 x/10".
  */
 function onRetry(event: ChatEngineEvent, key: string, deps: EngineEventDeps) {
   const data = (event.data ?? {}) as {
@@ -1670,6 +1676,11 @@ function onRetry(event: ChatEngineEvent, key: string, deps: EngineEventDeps) {
     clearRetry(key, deps);
     return;
   }
+  const message = typeof data.message === "string" ? data.message : "";
+  if (isNoChannelRetryMessage(message)) {
+    failNoChannelRetry(event, key, deps);
+    return;
+  }
   retryingKeys.add(key);
   if (!deps.get().retryingByKey[key]) {
     deps.set((s) => ({ retryingByKey: setRetryingFlag(s.retryingByKey, key, true) }));
@@ -1678,9 +1689,70 @@ function onRetry(event: ChatEngineEvent, key: string, deps: EngineEventDeps) {
     retry: {
       attempt,
       max: typeof data.max === "number" ? data.max : 0,
-      message: typeof data.message === "string" ? data.message : "",
+      message,
     },
   });
+}
+
+/** Channel-less model: settle like an error, interrupt the still-retrying CLI. */
+function failNoChannelRetry(
+  event: ChatEngineEvent,
+  key: string,
+  deps: EngineEventDeps,
+) {
+  const human = i18n.t("chat.modelNoChannel");
+  clearRetry(key, deps);
+  askLoops.delete(key);
+  if (deps.get().bySession[key]?.compaction) {
+    patchSession(deps.set, key, { compaction: null });
+  }
+  const pending = drainPending(key);
+  deps.set((s) => {
+    const cur = s.bySession[key] ?? EMPTY_SESSION;
+    const messages = settleLiveRows(
+      pending
+        ? applyStreamParts(
+            cur.messages,
+            pending.parts,
+            pending.model ?? (deps.get().models[event.engine] || null),
+            pending.effort ?? stampedEffort(deps, event.engine, key),
+          )
+        : cur.messages,
+    );
+    return {
+      bySession: {
+        ...s.bySession,
+        [key]: {
+          ...cur,
+          messages,
+          error: human,
+          streaming: false,
+          interrupted: true,
+          turnStartedAt: null,
+          turnUsage: null,
+          retry: null,
+          settledRunIds: rememberSettledRun(cur, event.runId),
+          turnEndStatus: buildTurnEndStatus(messages),
+        },
+      },
+      streamingByKey: setStreamingFlag(s.streamingByKey, key, false),
+      retryingByKey: setRetryingFlag(s.retryingByKey, key, false),
+    };
+  });
+  // Kill the CLI so it stops burning the remaining retries.
+  void ipc.interruptSession(event.runId).catch(() => false);
+  if (event.sessionId) {
+    void ipc.interruptSession(event.sessionId).catch(() => false);
+  }
+  runRouting.delete(event.runId);
+  untrackRun(event.runId);
+  dropRunUsage(event.runId);
+  ipc.rescanSessions().catch(() => {});
+  deps.markUnseenIfBackground(key);
+  dispatchNormalized(event);
+  finishRunLifecycle(event.runId, "failed", human, event.sessionId);
+  void deps.refreshSessionUsage?.(key).catch(() => {});
+  // Interrupted on purpose: leave the queue parked (same as user Stop).
 }
 
 /** Drop the indicator once the re-issued request produces content. A

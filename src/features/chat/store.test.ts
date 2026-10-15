@@ -659,7 +659,7 @@ describe("model selection is per session", () => {
     expect(useChatStore.getState().active?.model).toBe("glm-5.3-flash");
   });
 
-  it("continues a session on the model that session actually ran", async () => {
+  it("does not stick a history served model when GUI never remembered one", async () => {
     const a = sess("s-a");
     useChatStore.setState({
       activeEngine: "omp",
@@ -670,7 +670,10 @@ describe("model selection is per session", () => {
         "omp/s-a": {
           ...EMPTY_SESSION,
           messages: [
-            { seq: 1, role: "assistant", text: "hi", ts: null, model: "glm-5.3-flash" },
+            // Gateway may rewrite the served id (e.g. deepseek-flash). That
+            // stamp is for meta only — without session_models / activeModel,
+            // resume must use the engine default, not the history flash.
+            { seq: 1, role: "assistant", text: "hi", ts: null, model: "deepseek-flash" },
           ],
         },
       },
@@ -678,9 +681,8 @@ describe("model selection is per session", () => {
 
     await useChatStore.getState().send("next", []);
 
-    // Not the engine default: the conversation keeps its own model.
     expect(vi.mocked(ipc.sendMessage)).toHaveBeenCalledWith(
-      expect.objectContaining({ model: "glm-5.3-flash" }),
+      expect.objectContaining({ model: "kimi-k3" }),
     );
   });
 

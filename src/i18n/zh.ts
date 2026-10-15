@@ -263,6 +263,7 @@ export const zh = {
     possiblyIncomplete: "回复可能不完整，可再发继续",
     retrying: "重试中 {{attempt}}/{{max}}",
     retryingNoMax: "重试中 {{attempt}}",
+    modelNoChannel: "这模型没渠道，换一个能通的再发",
     thinkingProcess: "思考过程",
     thinkingCount: "思考 {{count}} 次",
     processSummary: "思考 {{thinking}} 次 工具调用 {{tools}} 次",

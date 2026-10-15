@@ -702,8 +702,14 @@ fn format_api_retry(value: &Value) -> String {
         .and_then(Value::as_str)
         .map(str::trim)
         .filter(|e| !e.is_empty() && *e != "unknown");
+    // Keep the upstream detail (e.g. "No available channel for model …")
+    // even when a status code is present — the UI uses that text to fail
+    // channel-less models fast instead of hanging on 10 retries.
     let mut msg = match value.get("error_status").and_then(Value::as_u64) {
-        Some(code) => format!("API error (HTTP {code})"),
+        Some(code) => match detail {
+            Some(detail) => format!("API error (HTTP {code}): {detail}"),
+            None => format!("API error (HTTP {code})"),
+        },
         None => match detail {
             Some(detail) => format!("API error: {detail}"),
             None => "API error".to_string(),
@@ -1306,6 +1312,30 @@ mod tests {
             }
             other => panic!("expected retry progress, got {other:?}"),
         }
+    }
+
+    #[test]
+    fn api_retry_preserves_no_channel_detail_with_status() {
+        let line = serde_json::json!({
+            "type": "system",
+            "subtype": "api_retry",
+            "attempt": 1,
+            "max_retries": 10,
+            "retry_delay_ms": 1000,
+            "error_status": 503,
+            "error": "No available channel for model deepseek-flash under group default (distributor)",
+            "session_id": "s-1"
+        })
+        .to_string();
+        let mut out = Vec::new();
+        ClaudeEngine::new().parse_line(&line, &mut out);
+        let message = out.iter().find_map(|e| match e {
+            EngineEvent::Retry { message, .. } => Some(message.as_str()),
+            _ => None,
+        });
+        let message = message.expect("retry event");
+        assert!(message.contains("503"), "{message}");
+        assert!(message.contains("No available channel"), "{message}");
     }
 
     #[test]

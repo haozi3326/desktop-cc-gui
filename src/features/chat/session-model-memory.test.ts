@@ -3,7 +3,7 @@ import { ipc, type SessionMeta } from "@/lib/ipc";
 import { useChatStore } from "./store";
 import { handleEngineEvents, type EngineEventDeps } from "./store/engine-events";
 import { sessionKey } from "./store/persistence";
-import { EMPTY_SESSION, resolveSessionModel, resolveSessionEffort, runRouting } from "./store/stream";
+import { EMPTY_SESSION, resolveSessionModel, resolveSessionEffort, isNoChannelRetryMessage, runRouting } from "./store/stream";
 
 vi.mock("@/lib/ipc", () => ({
   ipc: {
@@ -274,5 +274,40 @@ describe("a session's provider and model memory", () => {
     );
 
     expect(vi.mocked(ipc.rememberSessionEffort)).toHaveBeenCalledWith("omp", SID, "high");
+  });
+});
+
+describe("resolveSessionModel ignores history served ids", () => {
+  it("falls back to the engine default when only history carries a served model", () => {
+    const tab = { engine: "claude", sessionId: SID, workspacePath: WS };
+    const session = {
+      ...EMPTY_SESSION,
+      messages: [
+        { seq: 1, role: "assistant" as const, text: "ok", ts: null, model: "deepseek-flash" },
+      ],
+    };
+    expect(resolveSessionModel(tab, session, "coding-claude")).toBe("coding-claude");
+  });
+
+  it("still honours GUI-remembered activeModel over the engine default", () => {
+    const tab = { engine: "claude", sessionId: SID, workspacePath: WS };
+    const session = {
+      ...EMPTY_SESSION,
+      activeModel: "coding-claude",
+      messages: [
+        { seq: 1, role: "assistant" as const, text: "ok", ts: null, model: "deepseek-flash" },
+      ],
+    };
+    expect(resolveSessionModel(tab, session, "default")).toBe("coding-claude");
+  });
+
+  it("detects channel-less retry messages", () => {
+    expect(
+      isNoChannelRetryMessage(
+        "API error (HTTP 503): No available channel for model deepseek-flash; retrying (1/10) in 1.0s",
+      ),
+    ).toBe(true);
+    expect(isNoChannelRetryMessage("API error (HTTP 529); retrying (3/10) in 9.5s")).toBe(false);
+    expect(isNoChannelRetryMessage("model_not_found")).toBe(true);
   });
 });

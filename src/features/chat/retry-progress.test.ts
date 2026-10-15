@@ -13,6 +13,7 @@ vi.mock("@/lib/ipc", () => ({
   ipc: {
     rescanSessions: vi.fn(async () => {}),
     usageRecord: vi.fn(async () => {}),
+    interruptSession: vi.fn(async () => true),
   },
 }));
 vi.mock("@/lib/events", () => ({
@@ -86,6 +87,27 @@ describe("provider retry progress", () => {
     expect(s.error).toBeNull();
     expect(s.streaming).toBe(true);
     expect(useChatStore.getState().retryingByKey[KEY]).toBe(true);
+  });
+
+  it("fails fast on No available channel instead of hanging on 重试中", () => {
+    handleEngineEvents(
+      [
+        ev("retry", 2, {
+          attempt: 1,
+          max: 10,
+          message:
+            "API error (HTTP 503): No available channel for model deepseek-flash under group default (distributor); retrying (1/10) in 1.0s",
+        }),
+      ],
+      deps(),
+    );
+
+    const s = useChatStore.getState().bySession[KEY]!;
+    expect(s.retry).toBeNull();
+    expect(s.streaming).toBe(false);
+    expect(s.error).toMatch(/没渠道|no channel/i);
+    expect(useChatStore.getState().retryingByKey[KEY]).toBeUndefined();
+    expect(vi.mocked(ipc.interruptSession)).toHaveBeenCalled();
   });
 
   it("tracks the latest attempt", () => {

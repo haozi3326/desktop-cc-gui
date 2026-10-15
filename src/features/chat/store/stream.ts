@@ -106,13 +106,17 @@ export const EMPTY_SESSION: SessionState = {
 /** The model one session runs with, most specific first:
  *
  *  1. the tab's own pick (an explicit choice for this session),
- *  2. what the engine reported running for this session,
- *  3. the model this session's history was written with,
- *  4. the engine default (new chats, sessions with no history yet).
+ *  2. what the GUI remembered / engine reported for this session
+ *     (`activeModel`, from session_models or a prior send),
+ *  3. the engine default (CLI-opened chats, new chats, no GUI memory yet).
+ *
+ * History `message.model` is the *served* id (gateways may rewrite it to
+ * something like deepseek-flash). That stamp stays on the row for meta, but
+ * must NOT drive the next `--model` — otherwise a CLI session resumes stuck
+ * on a channel-less flash and the CLI burns 10 retries.
  *
  * Per session on purpose: two omp sessions may run different models, so the
- * picker and send must read the session's choice. Event-stamped rows instead
- * prefer activeModel: the concrete model this turn ran, not its selector.
+ * picker and send must read the session's choice.
  */
 export function resolveSessionModel(
   tab: { engine: string; model?: string } | null | undefined,
@@ -122,14 +126,18 @@ export function resolveSessionModel(
   if (!tab) return engineDefault;
   if (tab.model) return tab.model;
   if (session?.activeModel) return session.activeModel;
-  const messages = session?.messages;
-  if (messages) {
-    for (let i = messages.length - 1; i >= 0; i--) {
-      const model = messages[i].model;
-      if (model) return model;
-    }
-  }
   return engineDefault;
+}
+
+/** True when a provider-retry message means the model has no channel —
+ *  retrying will not help. Matched against the CLI `api_retry` detail line. */
+export function isNoChannelRetryMessage(message: string): boolean {
+  const m = message.toLowerCase();
+  return (
+    m.includes("no available channel") ||
+    m.includes("model_not_found") ||
+    (m.includes("http 503") && m.includes("channel"))
+  );
 }
 
 /** The reasoning level one session runs with. A native session owns its level

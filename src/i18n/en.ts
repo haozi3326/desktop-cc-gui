@@ -278,6 +278,7 @@ export const en: Messages = {
     possiblyIncomplete: "Reply may be incomplete — send again to continue",
     retrying: "Retrying {{attempt}}/{{max}}",
     retryingNoMax: "Retrying {{attempt}}",
+    modelNoChannel: "This model has no channel — pick one that works and send again",
     thinkingProcess: "Thinking process",
     thinkingCount: "Thinking ×{{count}}",
     processSummary: "Thinking ×{{thinking}} · {{tools}} tool calls",

@@ -40,27 +40,17 @@ export function useTabModelDisplay({
   const sessionActiveModel = useChatStore((s) =>
     sessionKey ? (s.bySession[sessionKey]?.activeModel ?? null) : null,
   );
-  const historyModel = useMemo(() => memoizeMessageHistory((messages) => {
-    for (let i = messages.length - 1; i >= 0; i--) {
-      const model = messages[i].model;
-      if (model) return model;
-    }
-    return null;
-  }), []);
-  const sessionHistoryModel = useChatStore((s) =>
-    sessionKey ? historyModel(s.bySession[sessionKey]?.messages) : null,
-  );
   const tabModel = useMemo(() => {
     if (!active || active.engine !== activeEngine) return undefined;
-    // tab pick → what the engine reported running → this session's history
-    // → the engine default for a session with nothing recorded yet.
+    // Same order as resolveSessionModel: tab pick → GUI-remembered /
+    // reported activeModel → engine default. Do NOT scan history
+    // message.model (served id can be a gateway rewrite with no channel).
     return (
       active.model ||
       sessionActiveModel ||
-      sessionHistoryModel ||
       models[activeEngine]
     );
-  }, [active, activeEngine, sessionActiveModel, sessionHistoryModel, models]);
+  }, [active, activeEngine, sessionActiveModel, models]);
   const sessionActiveEffort = useChatStore((s) =>
     sessionKey ? (s.bySession[sessionKey]?.activeEffort ?? null) : null,
   );
