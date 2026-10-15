@@ -29,6 +29,32 @@ export function changelogEntryFor(version: string): ChangelogEntry | undefined {
 
 export const CHANGELOG_DATA: ChangelogEntry[] = [
   {
+    version: "1.1.4",
+    date: "2026-10-15",
+    content: {
+      zh: `✨ 新功能
+- **多项目页签短名与按工作区分组**：会话页签条上显示工作区短名，并把同一工作区的会话页签聚在一起，方便在多个项目之间辨认与切换。
+- **点工作区 chip 跳到该组首个页签**：页签条上的工作区短名从装饰变为可点；一点即聚焦该组第一个会话页签并滚入视口，跨项目少横滑一截。
+- **侧栏默认多露出会话**：侧栏每个工作区默认可见会话数从 5 提到 15（带软迁移），少点一次「展开更多」就能看到当前常用会话。
+- **当前会话始终能露出来**：选中会话时，侧栏会软展开列表，避免活动线程被裁在默认可见区外。
+- **折叠工作区随当前会话展开**：选中某个工作区下的会话（含非草稿）时，若该工作区是收起的，会自动展开一次，不用先手动点开夹子。
+- **超大工具 diff 分页渲染**：展开工具详情里的改动对比时，大 diff 按固定页挂载 DOM，不再一次全量渲染；小 diff、空 diff、复制全文行为不变。
+
+🧹 内部优化
+- 去掉百度统计（Tongji）埋点与相关桥接，应用内不再加载该脚本`,
+      en: `✨ Features
+- **Multi-project tab short names and workspace grouping**: session tabs show a short workspace name and cluster tabs from the same workspace together, so multiple projects are easier to tell apart and switch between.
+- **Click a workspace chip to jump to that group's first tab**: the short name on the tab strip is clickable — one click focuses the group's first session tab and scrolls it into view, so you cross projects with less horizontal scrolling.
+- **Sidebar shows more sessions by default**: each workspace's default visible thread count rises from 5 to 15 (with a soft migrate), so common sessions show up with one less "show more".
+- **The active session stays visible**: selecting a session soft-expands the sidebar list so the active thread is not clipped outside the default visible window.
+- **Collapsed workspaces expand for the active session**: selecting a session under a workspace (including non-drafts) expands that workspace once when it was collapsed, so you do not have to open the folder by hand first.
+- **Large tool diffs render in pages**: when you expand a tool's file diff, large diffs mount DOM in fixed-size pages instead of mapping every line at once; small diffs, empty diffs, and copy-all stay the same.
+
+🧹 Internal
+- Removed Baidu Tongji analytics and its bridge; the app no longer loads that script`,
+    },
+  },
+  {
     version: "1.1.3",
     date: "2026-10-10",
     content: {
