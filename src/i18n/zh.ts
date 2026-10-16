@@ -639,7 +639,7 @@ export const zh = {
     promptScopeWorkspace: "工作区",
     promptScopeGlobal: "全局",
     promptEmptyTitle: "暂无提示词",
-    promptEmptyDesc: "在工作区 .ccgui/prompts 或全局目录创建 Markdown 提示词。",
+    promptEmptyDesc: "在工作区 .helm/prompts 或全局目录创建 Markdown 提示词。",
     promptNoMatches: "没有匹配的提示词",
     promptWorkspaceRequired: "打开一个工作区后可管理提示词",
     promptEdit: "编辑",
