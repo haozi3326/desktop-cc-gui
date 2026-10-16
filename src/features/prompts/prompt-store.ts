@@ -2,7 +2,7 @@
  * Custom prompts: markdown files with `---` frontmatter (description,
  * argument-hint) that the composer `!` menu inserts into the input and the
  * settings page manages. Workspace scope lives under
- * `<root>/.helm/prompts/` (legacy `.ccgui/prompts` still readable), global scope under `~/.ccgui-next/prompts/`.
+ * `<root>/.helm/prompts/`, global scope under `~/.ccgui-next/prompts/`.
  *
  * Per-root cache modeled on create-root-cache-store (stale-while-
  * revalidate, one in-flight IPC per root) with an added forced refresh()

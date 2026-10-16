@@ -899,8 +899,8 @@ export interface ResolvedBuiltInAgent {
   promptHash: string;
 }
 
-/** Where a custom prompt file lives: `<root>/.helm/prompts/` (legacy
- *  `.ccgui/prompts` still readable) or the app-home `~/.ccgui-next/prompts/`. */
+/** Where a custom prompt file lives: `<root>/.helm/prompts/` or the
+ *  app-home `~/.ccgui-next/prompts/`. */
 export type PromptScope = "workspace" | "global";
 
 /** A custom prompt (`prompts_list`): one markdown file with `---`
@@ -1687,7 +1687,7 @@ export const ipc = {
   resolveEnabledBuiltInAgent: (agentId: string) =>
     invoke<ResolvedBuiltInAgent>("resolve_enabled_built_in_agent", { agentId }),
   // custom prompts — markdown + frontmatter files under
-  // <root>/.helm/prompts (workspace scope; legacy .ccgui/prompts still read) or ~/.ccgui-next/prompts
+  // <root>/.helm/prompts (workspace scope) or ~/.ccgui-next/prompts
   // (global scope); picked via the composer `!` menu, managed in settings.
   listPrompts: (path: string) =>
     withGrantRetry(() => invoke<CustomPromptEntry[]>("prompts_list", { path })),
