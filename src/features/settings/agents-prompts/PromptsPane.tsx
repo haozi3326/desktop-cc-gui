@@ -127,7 +127,7 @@ function PromptRow({
  * (stale-while-revalidate); the standalone CRUD exports refresh the root and
  * dispatch the changed event themselves, so the pane never calls refresh.
  * Without an active workspace the IPC needs no root path, so the pane gates
- * on one (workspace prompts live under <root>/.ccgui/prompts).
+ * on one (workspace prompts live under <root>/.helm/prompts).
  */
 export function PromptsPane() {
   const { t } = useTranslation();

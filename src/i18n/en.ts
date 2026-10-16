@@ -663,7 +663,7 @@ export const en: Messages = {
     promptScopeWorkspace: "Workspace",
     promptScopeGlobal: "Global",
     promptEmptyTitle: "No prompts yet",
-    promptEmptyDesc: "Create Markdown prompts in the workspace .ccgui/prompts or the global folder.",
+    promptEmptyDesc: "Create Markdown prompts in the workspace .helm/prompts or the global folder.",
     promptNoMatches: "No matching prompts",
     promptWorkspaceRequired: "Open a workspace to manage prompts",
     promptEdit: "Edit",

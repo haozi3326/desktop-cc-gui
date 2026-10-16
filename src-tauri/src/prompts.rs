@@ -5,7 +5,8 @@ use std::sync::Arc;
 
 /// Custom prompts (提示词) for the composer `!` picker (ported from
 /// desktop-cc-gui's prompts.rs, re-rooted: workspace scope now lives at
-/// `<workspace>/.ccgui/prompts/*.md` and global scope at
+/// `<workspace>/.helm/prompts/*.md` (new writes) with read/update compat for
+/// legacy `<workspace>/.ccgui/prompts/*.md`, and global scope at
 /// `~/.ccgui-next/prompts/*.md`, next to the rest of this app's state).
 /// Each prompt is a markdown file whose optional `---` frontmatter carries
 /// `description` / `argument-hint`; the file stem is the prompt name and the
@@ -45,6 +46,12 @@ pub struct PromptUpdates {
 }
 
 fn workspace_prompts_dir(root: &Path) -> PathBuf {
+    root.join(".helm").join("prompts")
+}
+
+/// Pre-rename workspace prompts dir. Still readable/updatable; never created
+/// by list/dirs/create — new writes land in [`workspace_prompts_dir`].
+fn legacy_workspace_prompts_dir(root: &Path) -> PathBuf {
     root.join(".ccgui").join("prompts")
 }
 
@@ -52,20 +59,24 @@ fn global_prompts_dir() -> PathBuf {
     crate::paths::app_home().join("prompts")
 }
 
-/// Both scopes' directories for a workspace root, workspace first. The
-/// workspace root itself must pass the same workspace/grant check the
-/// file commands use, so a web client cannot point `path` at an arbitrary
-/// directory.
+/// Allowed prompt directories for a workspace root. Canonical workspace
+/// (`.helm/prompts`) first, then the legacy `.ccgui/prompts` sibling (same
+/// "workspace" scope, for read/update/delete), then global. Create/move-to-
+/// workspace always pick the first "workspace" entry. The workspace root
+/// itself must pass the same workspace/grant check the file commands use,
+/// so a web client cannot point `path` at an arbitrary directory.
 fn prompt_roots(path: &str, db: &crate::db::Db) -> Result<Vec<(PathBuf, &'static str)>, String> {
     let root = crate::files::ensure_allowed(path, db)?;
     Ok(vec![
         (workspace_prompts_dir(&root), "workspace"),
+        (legacy_workspace_prompts_dir(&root), "workspace"),
         (global_prompts_dir(), "global"),
     ])
 }
 
-/// Every prompt_path mutation must resolve to a file inside one of the two
-/// scope directories — canonicalized on both sides so `..` segments and
+/// Every prompt_path mutation must resolve to a file inside one of the
+/// allowed scope directories (helm workspace, legacy `.ccgui` workspace,
+/// or global) — canonicalized on both sides so `..` segments and
 /// symlinked parents cannot escape.
 fn ensure_within_roots(path: &Path, roots: &[(PathBuf, &'static str)]) -> Result<(), String> {
     let canonical = path
@@ -232,23 +243,50 @@ fn discover_prompts_in(dir: &Path, scope: &str) -> Vec<CustomPromptEntry> {
 
 fn prompts_list_blocking(db: &crate::db::Db, path: &str) -> Result<Vec<CustomPromptEntry>, String> {
     let roots = prompt_roots(path, db)?;
-    let mut out = Vec::new();
+    // Ensure only canonical dirs (helm + global). Never mkdir the legacy
+    // `.ccgui/prompts` tree — criterion A: empty workspaces must not grow one.
     for (dir, scope) in &roots {
+        if *scope == "workspace" && dir.ends_with(Path::new(".ccgui").join("prompts")) {
+            continue;
+        }
         let _ = fs::create_dir_all(dir);
-        // Workspace entries come first; both lists are name-sorted.
-        out.extend(discover_prompts_in(dir, scope));
+    }
+    let mut out = Vec::new();
+    let mut seen_workspace_names = std::collections::HashSet::<String>::new();
+    for (dir, scope) in &roots {
+        // Workspace entries come first (helm before legacy); both lists are
+        // name-sorted inside discover. Same stem in helm and legacy → keep helm.
+        for entry in discover_prompts_in(dir, scope) {
+            if *scope == "workspace" {
+                if !seen_workspace_names.insert(entry.name.clone()) {
+                    continue;
+                }
+            }
+            out.push(entry);
+        }
     }
     Ok(out)
 }
 
 fn prompts_dirs_blocking(db: &crate::db::Db, path: &str) -> Result<PromptsDirs, String> {
     let roots = prompt_roots(path, db)?;
-    for (dir, _) in &roots {
-        fs::create_dir_all(dir).map_err(|err| err.to_string())?;
-    }
+    // Canonical paths only: first workspace (= .helm/prompts) + global.
+    // Do not create the legacy `.ccgui/prompts` directory here.
+    let workspace = roots
+        .iter()
+        .find(|(_, scope)| *scope == "workspace")
+        .map(|(dir, _)| dir.clone())
+        .ok_or_else(|| "Missing workspace prompts dir.".to_string())?;
+    let global = roots
+        .iter()
+        .find(|(_, scope)| *scope == "global")
+        .map(|(dir, _)| dir.clone())
+        .ok_or_else(|| "Missing global prompts dir.".to_string())?;
+    fs::create_dir_all(&workspace).map_err(|err| err.to_string())?;
+    fs::create_dir_all(&global).map_err(|err| err.to_string())?;
     Ok(PromptsDirs {
-        workspace: roots[0].0.to_string_lossy().to_string(),
-        global: roots[1].0.to_string_lossy().to_string(),
+        workspace: workspace.to_string_lossy().to_string(),
+        global: global.to_string_lossy().to_string(),
     })
 }
 
@@ -481,7 +519,7 @@ pub async fn prompts_delete(
 /// Copy `*.md` files from `src` into `dest`, skipping names that already
 /// exist (files already in the new app always win). A missing or unreadable
 /// source dir is zero copies, not an error; `dest` is created lazily so no
-/// `.ccgui` directory appears in projects that have nothing to import.
+/// `.helm` directory appears in projects that have nothing to import.
 /// Individual copy failures are logged and skipped — one unreadable file
 /// must not strand the rest of the import.
 fn copy_prompt_files(src: &Path, dest: &Path) -> usize {
@@ -574,11 +612,11 @@ fn legacy_custom_codex_home(
 /// - global: `<codex home>/prompts/*.md` — shared with the Codex CLI, so
 ///   files are COPIED (never moved) into the new global prompts dir;
 /// - workspace: `<legacy app-data>/workspaces/<id>/prompts/*.md`, mapped to
-///   `<workspace>/.ccgui/prompts` through the legacy workspaces.json id→path
+///   `<workspace>/.helm/prompts` through the legacy workspaces.json id→path
 ///   list. The DB cannot provide that mapping: path conflicts during the
 ///   workspace import keep the new app's row id.
 /// Worktree children (parentId) were skipped by the workspace import, but
-/// their prompts still land in their own path's `.ccgui/prompts`, ready for
+/// their prompts still land in their own path's `.helm/prompts`, ready for
 /// when the user re-adds them. Entries with a custom codex home also pull
 /// that home's prompts into their workspace scope — that was their
 /// per-workspace "global". Workspaces whose path no longer exists are
@@ -797,6 +835,81 @@ mod tests {
     }
 
     #[test]
+    fn workspace_prompts_dir_is_helm_not_ccgui() {
+        let root = PathBuf::from("/tmp/ws");
+        assert_eq!(
+            workspace_prompts_dir(&root),
+            PathBuf::from("/tmp/ws/.helm/prompts")
+        );
+        assert_eq!(
+            legacy_workspace_prompts_dir(&root),
+            PathBuf::from("/tmp/ws/.ccgui/prompts")
+        );
+    }
+
+    #[test]
+    fn ensure_within_roots_accepts_legacy_ccgui_prompts() {
+        let root = scratch_dir("legacy-accept");
+        let helm = workspace_prompts_dir(&root);
+        let legacy = legacy_workspace_prompts_dir(&root);
+        let global = root.join("global");
+        fs::create_dir_all(&helm).unwrap();
+        fs::create_dir_all(&legacy).unwrap();
+        fs::create_dir_all(&global).unwrap();
+        let roots = vec![
+            (helm, "workspace"),
+            (legacy.clone(), "workspace"),
+            (global, "global"),
+        ];
+        let legacy_file = legacy.join("old.md");
+        fs::write(&legacy_file, "legacy body").unwrap();
+        assert!(ensure_within_roots(&legacy_file, &roots).is_ok());
+        assert_eq!(scope_of(&legacy_file, &roots), Some("workspace"));
+    }
+
+    #[test]
+    fn discover_still_finds_legacy_ccgui_prompts() {
+        let root = scratch_dir("legacy-list");
+        let legacy = legacy_workspace_prompts_dir(&root);
+        fs::create_dir_all(&legacy).unwrap();
+        fs::write(legacy.join("review.md"), "请审查\n").unwrap();
+        let entries = discover_prompts_in(&legacy, "workspace");
+        assert_eq!(entries.len(), 1);
+        assert_eq!(entries[0].name, "review");
+        assert_eq!(entries[0].content, "请审查\n");
+    }
+
+    #[test]
+    fn helm_name_wins_over_legacy_when_both_exist() {
+        let root = scratch_dir("dedupe");
+        let helm = workspace_prompts_dir(&root);
+        let legacy = legacy_workspace_prompts_dir(&root);
+        fs::create_dir_all(&helm).unwrap();
+        fs::create_dir_all(&legacy).unwrap();
+        fs::write(helm.join("plan.md"), "helm body\n").unwrap();
+        fs::write(legacy.join("plan.md"), "legacy body\n").unwrap();
+        fs::write(legacy.join("only-legacy.md"), "only legacy\n").unwrap();
+
+        let mut seen = std::collections::HashSet::<String>::new();
+        let mut out = Vec::new();
+        for (dir, scope) in [
+            (helm.as_path(), "workspace"),
+            (legacy.as_path(), "workspace"),
+        ] {
+            for entry in discover_prompts_in(dir, scope) {
+                if !seen.insert(entry.name.clone()) {
+                    continue;
+                }
+                out.push(entry);
+            }
+        }
+        assert_eq!(out.len(), 2);
+        let plan = out.iter().find(|e| e.name == "plan").unwrap();
+        assert_eq!(plan.content, "helm body\n");
+        assert!(out.iter().any(|e| e.name == "only-legacy"));
+    }
+
+    #[test]
     fn legacy_import_copies_global_workspace_and_custom_home_prompts() {
         let root = scratch_dir("legacy-import");
         let db = crate::db::Db::open_at(&root.join("app.db")).unwrap();
@@ -858,11 +971,11 @@ mod tests {
             "only *.md files are imported"
         );
         assert_eq!(
-            fs::read_to_string(project.join(".ccgui/prompts/w.md")).unwrap(),
+            fs::read_to_string(project.join(".helm/prompts/w.md")).unwrap(),
             "workspace body"
         );
         assert_eq!(
-            fs::read_to_string(project.join(".ccgui/prompts/c.md")).unwrap(),
+            fs::read_to_string(project.join(".helm/prompts/c.md")).unwrap(),
             "custom home body",
             "a custom codex home's prompts land in the workspace scope"
         );
@@ -871,7 +984,7 @@ mod tests {
             "copy, never move: the Codex CLI still reads the legacy dir"
         );
         assert!(
-            !root.join("missing/.ccgui").exists(),
+            !root.join("missing/.helm").exists(),
             "workspaces whose path is gone are skipped"
         );
     }
