@@ -4,13 +4,15 @@ use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
 /// Custom prompts (提示词) for the composer `!` picker (ported from
-/// desktop-cc-gui's prompts.rs, re-rooted: workspace scope now lives at
-/// `<workspace>/.helm/prompts/*.md` (new writes) with read/update compat for
-/// legacy `<workspace>/.ccgui/prompts/*.md`, and global scope at
+/// desktop-cc-gui's prompts.rs, re-rooted: workspace scope lives at
+/// `<workspace>/.helm/prompts/*.md`, global scope at
 /// `~/.ccgui-next/prompts/*.md`, next to the rest of this app's state).
-/// Each prompt is a markdown file whose optional `---` frontmatter carries
-/// `description` / `argument-hint`; the file stem is the prompt name and the
-/// absolute path round-trips through the frontend as the update/delete key.
+/// A one-time migrate moves leftover `*.md` from the pre-rename
+/// `<workspace>/.ccgui/prompts` into `.helm/prompts` (same stem keeps helm;
+/// product never dual-reads the old path). Each prompt is a markdown file
+/// whose optional `---` frontmatter carries `description` / `argument-hint`;
+/// the file stem is the prompt name and the absolute path round-trips
+/// through the frontend as the update/delete key.
 
 #[derive(Serialize, Clone)]
 #[serde(rename_all = "camelCase")]
@@ -49,8 +51,8 @@ fn workspace_prompts_dir(root: &Path) -> PathBuf {
     root.join(".helm").join("prompts")
 }
 
-/// Pre-rename workspace prompts dir. Still readable/updatable; never created
-/// by list/dirs/create — new writes land in [`workspace_prompts_dir`].
+/// Pre-rename workspace prompts dir. Used only by the one-time migrate into
+/// [`workspace_prompts_dir`]; never a live prompt root and never created.
 fn legacy_workspace_prompts_dir(root: &Path) -> PathBuf {
     root.join(".ccgui").join("prompts")
 }
@@ -59,25 +61,64 @@ fn global_prompts_dir() -> PathBuf {
     crate::paths::app_home().join("prompts")
 }
 
-/// Allowed prompt directories for a workspace root. Canonical workspace
-/// (`.helm/prompts`) first, then the legacy `.ccgui/prompts` sibling (same
-/// "workspace" scope, for read/update/delete), then global. Create/move-to-
-/// workspace always pick the first "workspace" entry. The workspace root
-/// itself must pass the same workspace/grant check the file commands use,
-/// so a web client cannot point `path` at an arbitrary directory.
+/// Allowed prompt directories for a workspace root: canonical workspace
+/// (`.helm/prompts`) then global. Create/move-to-workspace pick the
+/// "workspace" entry. The workspace root itself must pass the same
+/// workspace/grant check the file commands use, so a web client cannot
+/// point `path` at an arbitrary directory.
 fn prompt_roots(path: &str, db: &crate::db::Db) -> Result<Vec<(PathBuf, &'static str)>, String> {
     let root = crate::files::ensure_allowed(path, db)?;
     Ok(vec![
         (workspace_prompts_dir(&root), "workspace"),
-        (legacy_workspace_prompts_dir(&root), "workspace"),
         (global_prompts_dir(), "global"),
     ])
 }
 
+/// Move leftover `*.md` from `<workspace>/.ccgui/prompts` into
+/// `.helm/prompts`. Same stem already in helm → leave the legacy file
+/// (do not overwrite). Missing or empty legacy dir is a no-op. Call from
+/// list/dirs entry points; cheap when there is nothing left to move.
+fn migrate_workspace_prompts_from_legacy(root: &Path) {
+    let legacy = legacy_workspace_prompts_dir(root);
+    let dest = workspace_prompts_dir(root);
+    let Ok(entries) = fs::read_dir(&legacy) else {
+        return;
+    };
+    let mut ensured_dest = false;
+    for entry in entries.flatten() {
+        let path = entry.path();
+        let is_file = fs::metadata(&path).map(|m| m.is_file()).unwrap_or(false);
+        let is_md = path
+            .extension()
+            .and_then(|s| s.to_str())
+            .map(|ext| ext.eq_ignore_ascii_case("md"))
+            .unwrap_or(false);
+        if !is_file || !is_md {
+            continue;
+        }
+        let target = dest.join(entry.file_name());
+        if target.exists() {
+            // Helm wins; leave legacy as dead data on disk.
+            continue;
+        }
+        if !ensured_dest {
+            if fs::create_dir_all(&dest).is_err() {
+                return;
+            }
+            ensured_dest = true;
+        }
+        if let Err(err) = move_file(&path, &target) {
+            eprintln!(
+                "[prompts] migrate skip {}: {err}",
+                path.display()
+            );
+        }
+    }
+}
+
 /// Every prompt_path mutation must resolve to a file inside one of the
-/// allowed scope directories (helm workspace, legacy `.ccgui` workspace,
-/// or global) — canonicalized on both sides so `..` segments and
-/// symlinked parents cannot escape.
+/// allowed scope directories (helm workspace or global) — canonicalized on
+/// both sides so `..` segments and symlinked parents cannot escape.
 fn ensure_within_roots(path: &Path, roots: &[(PathBuf, &'static str)]) -> Result<(), String> {
     let canonical = path
         .canonicalize()
@@ -242,35 +283,25 @@ fn discover_prompts_in(dir: &Path, scope: &str) -> Vec<CustomPromptEntry> {
 }
 
 fn prompts_list_blocking(db: &crate::db::Db, path: &str) -> Result<Vec<CustomPromptEntry>, String> {
+    let root = crate::files::ensure_allowed(path, db)?;
+    migrate_workspace_prompts_from_legacy(&root);
     let roots = prompt_roots(path, db)?;
-    // Ensure only canonical dirs (helm + global). Never mkdir the legacy
-    // `.ccgui/prompts` tree — criterion A: empty workspaces must not grow one.
-    for (dir, scope) in &roots {
-        if *scope == "workspace" && dir.ends_with(Path::new(".ccgui").join("prompts")) {
-            continue;
-        }
+    // Canonical dirs only (helm + global). Never mkdir `.ccgui/prompts`.
+    for (dir, _) in &roots {
         let _ = fs::create_dir_all(dir);
     }
     let mut out = Vec::new();
-    let mut seen_workspace_names = std::collections::HashSet::<String>::new();
     for (dir, scope) in &roots {
-        // Workspace entries come first (helm before legacy); both lists are
-        // name-sorted inside discover. Same stem in helm and legacy → keep helm.
-        for entry in discover_prompts_in(dir, scope) {
-            if *scope == "workspace" {
-                if !seen_workspace_names.insert(entry.name.clone()) {
-                    continue;
-                }
-            }
-            out.push(entry);
-        }
+        out.extend(discover_prompts_in(dir, scope));
     }
     Ok(out)
 }
 
 fn prompts_dirs_blocking(db: &crate::db::Db, path: &str) -> Result<PromptsDirs, String> {
+    let root = crate::files::ensure_allowed(path, db)?;
+    migrate_workspace_prompts_from_legacy(&root);
     let roots = prompt_roots(path, db)?;
-    // Canonical paths only: first workspace (= .helm/prompts) + global.
+    // Canonical paths only: workspace (= .helm/prompts) + global.
     // Do not create the legacy `.ccgui/prompts` directory here.
     let workspace = roots
         .iter()
@@ -848,40 +879,56 @@ mod tests {
     }
 
     #[test]
-    fn ensure_within_roots_accepts_legacy_ccgui_prompts() {
-        let root = scratch_dir("legacy-accept");
+    fn ensure_within_roots_rejects_legacy_ccgui_prompts() {
+        // Live roots are helm + global only — leftover .ccgui paths are
+        // not accepted for update/delete after the migrate knife.
+        let root = scratch_dir("legacy-reject");
         let helm = workspace_prompts_dir(&root);
         let legacy = legacy_workspace_prompts_dir(&root);
         let global = root.join("global");
         fs::create_dir_all(&helm).unwrap();
         fs::create_dir_all(&legacy).unwrap();
         fs::create_dir_all(&global).unwrap();
-        let roots = vec![
-            (helm, "workspace"),
-            (legacy.clone(), "workspace"),
-            (global, "global"),
-        ];
+        let roots = vec![(helm, "workspace"), (global, "global")];
         let legacy_file = legacy.join("old.md");
         fs::write(&legacy_file, "legacy body").unwrap();
-        assert!(ensure_within_roots(&legacy_file, &roots).is_ok());
-        assert_eq!(scope_of(&legacy_file, &roots), Some("workspace"));
+        assert!(ensure_within_roots(&legacy_file, &roots).is_err());
+        assert_eq!(scope_of(&legacy_file, &roots), None);
     }
 
     #[test]
-    fn discover_still_finds_legacy_ccgui_prompts() {
-        let root = scratch_dir("legacy-list");
+    fn migrate_moves_legacy_md_into_helm() {
+        let root = scratch_dir("migrate-move");
+        let helm = workspace_prompts_dir(&root);
         let legacy = legacy_workspace_prompts_dir(&root);
         fs::create_dir_all(&legacy).unwrap();
         fs::write(legacy.join("review.md"), "请审查\n").unwrap();
-        let entries = discover_prompts_in(&legacy, "workspace");
+        fs::write(legacy.join("notes.txt"), "not a prompt").unwrap();
+
+        migrate_workspace_prompts_from_legacy(&root);
+
+        assert_eq!(
+            fs::read_to_string(helm.join("review.md")).unwrap(),
+            "请审查\n"
+        );
+        assert!(
+            !legacy.join("review.md").exists(),
+            "legacy file must be moved, not copied"
+        );
+        assert!(
+            legacy.join("notes.txt").exists(),
+            "non-md stays in the dead legacy dir"
+        );
+        // Subsequent list-shaped discover only sees helm.
+        let entries = discover_prompts_in(&helm, "workspace");
         assert_eq!(entries.len(), 1);
         assert_eq!(entries[0].name, "review");
-        assert_eq!(entries[0].content, "请审查\n");
+        assert!(discover_prompts_in(&legacy, "workspace").is_empty());
     }
 
     #[test]
-    fn helm_name_wins_over_legacy_when_both_exist() {
-        let root = scratch_dir("dedupe");
+    fn migrate_keeps_helm_on_name_conflict_and_moves_only_unique() {
+        let root = scratch_dir("migrate-dedupe");
         let helm = workspace_prompts_dir(&root);
         let legacy = legacy_workspace_prompts_dir(&root);
         fs::create_dir_all(&helm).unwrap();
@@ -890,23 +937,66 @@ mod tests {
         fs::write(legacy.join("plan.md"), "legacy body\n").unwrap();
         fs::write(legacy.join("only-legacy.md"), "only legacy\n").unwrap();
 
-        let mut seen = std::collections::HashSet::<String>::new();
-        let mut out = Vec::new();
-        for (dir, scope) in [
-            (helm.as_path(), "workspace"),
-            (legacy.as_path(), "workspace"),
-        ] {
-            for entry in discover_prompts_in(dir, scope) {
-                if !seen.insert(entry.name.clone()) {
-                    continue;
-                }
-                out.push(entry);
-            }
-        }
-        assert_eq!(out.len(), 2);
-        let plan = out.iter().find(|e| e.name == "plan").unwrap();
+        migrate_workspace_prompts_from_legacy(&root);
+
+        assert_eq!(
+            fs::read_to_string(helm.join("plan.md")).unwrap(),
+            "helm body\n",
+            "same stem keeps existing helm; do not overwrite"
+        );
+        assert!(
+            legacy.join("plan.md").exists(),
+            "conflicting legacy file remains as dead data"
+        );
+        assert_eq!(
+            fs::read_to_string(helm.join("only-legacy.md")).unwrap(),
+            "only legacy\n"
+        );
+        assert!(!legacy.join("only-legacy.md").exists());
+
+        let entries = discover_prompts_in(&helm, "workspace");
+        assert_eq!(entries.len(), 2);
+        let plan = entries.iter().find(|e| e.name == "plan").unwrap();
         assert_eq!(plan.content, "helm body\n");
-        assert!(out.iter().any(|e| e.name == "only-legacy"));
+        assert!(entries.iter().any(|e| e.name == "only-legacy"));
+    }
+
+    #[test]
+    fn migrate_noop_on_empty_or_missing_legacy_dir() {
+        let root = scratch_dir("migrate-empty");
+        // Missing legacy dir.
+        migrate_workspace_prompts_from_legacy(&root);
+        assert!(
+            !workspace_prompts_dir(&root).exists(),
+            "migrate must not create .helm when there is nothing to move"
+        );
+
+        // Empty legacy dir (no md) — still no helm creation, product
+        // does not depend on the empty leftover tree.
+        let legacy = legacy_workspace_prompts_dir(&root);
+        fs::create_dir_all(&legacy).unwrap();
+        migrate_workspace_prompts_from_legacy(&root);
+        assert!(!workspace_prompts_dir(&root).exists());
+        assert!(legacy.is_dir());
+    }
+
+    #[test]
+    fn empty_workspace_create_only_makes_helm_not_ccgui() {
+        // Mirrors prompts_dirs_blocking / list mkdir behaviour: only
+        // canonical roots are created.
+        let root = scratch_dir("create-helm-only");
+        let helm = workspace_prompts_dir(&root);
+        let global = root.join("global");
+        let roots = vec![(helm.clone(), "workspace"), (global.clone(), "global")];
+        for (dir, _) in &roots {
+            fs::create_dir_all(dir).unwrap();
+        }
+        assert!(helm.is_dir());
+        assert!(global.is_dir());
+        assert!(
+            !legacy_workspace_prompts_dir(&root).exists(),
+            "empty create must not grow .ccgui/prompts"
+        );
     }
 
     #[test]
