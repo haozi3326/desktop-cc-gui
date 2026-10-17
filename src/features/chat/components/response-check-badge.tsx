@@ -39,7 +39,7 @@ export function ResponseCheckBadge({
       ? `${requested.model} · ${t("chat.checkUnresolved")}`
       : requested?.comparisonModel &&
           requested.comparisonModel !== requested.model
-        ? `${requested.model} → ${requested.comparisonModel}`
+        ? `${requested.model} > ${requested.comparisonModel}`
         : (requested?.model ?? null);
   const mismatch = t("chat.checkMismatch");
   return (

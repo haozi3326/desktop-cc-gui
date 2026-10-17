@@ -349,8 +349,8 @@ export const en: Messages = {
     proxyOff: "Proxy: off - click to turn on",
     proxyConfigure: "Network proxy is not configured; click to open Settings",
     proxyTipOn: "Network proxy on: newly launched engines and terminals use the proxy. Click to turn off",
-    proxyTipOff: "Network proxy off. Click to enable — newly launched engines and terminals will use the proxy URL from Settings → Network proxy",
-    proxyTipConfigure: "Network proxy is not configured: click to open Settings → Network proxy",
+    proxyTipOff: "Network proxy off. Click to enable — newly launched engines and terminals will use the proxy URL from Settings > Network proxy",
+    proxyTipConfigure: "Network proxy is not configured: click to open Settings > Network proxy",
     contextWindow: "Context window",
     freeSpace: "Free space",
     usageInput: "Input",
@@ -372,7 +372,7 @@ export const en: Messages = {
     slashAppCua:
       "Computer use: let the agent see the screen and drive apps (/ccgui-cua <task>)",
     cuaUnsupportedEngine:
-      "This engine cannot do computer use (it cannot mount the driver). Switch to an engine that supports it, or see Settings → Computer use for per-engine support.",
+      "This engine cannot do computer use (it cannot mount the driver). Switch to an engine that supports it, or see Settings > Computer use for per-engine support.",
     refreshUsage: "Refresh",
     refreshUsageTooltip: "Re-fetch latest context usage for current session",
     autoCompactThreshold: "Auto-compact threshold",
@@ -574,7 +574,7 @@ export const en: Messages = {
     memoryEngineHint:
       "Writing needs an engine that can mount the memory tool (Claude Code / Codex / omp). Other engines still get the existing memory injected, but the model cannot write.",
     memoryEngineHintNone:
-      "No available engine can mount the memory tool; memory is still injected, but the model cannot write. Install Claude Code, Codex or omp in Settings → CLI management.",
+      "No available engine can mount the memory tool; memory is still injected, but the model cannot write. Install Claude Code, Codex or omp in Settings > CLI management.",
     memoryUsageLabel: "Usage",
     memoryBookTitle: "The bot's notes (MEMORY)",
     memoryBookDesc: "This bot only · limit {{limit}} chars",
@@ -918,7 +918,7 @@ export const en: Messages = {
     webRelay: "Relay",
     webRelayDeploy: "Deploy relay",
     webRelayDeployHint:
-      "Outbound access runs through your own Cloudflare Worker. Paste a Cloudflare API Token to deploy in one click — the Worker, its Durable Object and the relay key are created in your account.\nThe Edit Cloudflare Workers token template is enough. It is used once, is never stored (the field is cleared as soon as the deploy succeeds), and a short TTL — a day, say — is recommended so you can delete it in the dashboard right after.\nTokens starting with cfat_ are account-owned (Manage Account → Account API Tokens): Cloudflare does not let them list accounts, so fill in the Account ID too (copy it from the dashboard sidebar). A user token (My Profile → API Tokens) can leave it blank — the app reads the account by itself.\nYou can also click Source for the full deploy pack (source, wrangler config and a how-to) and deploy it yourself.\nThe relay URL and key below stay editable: if *.workers.dev is unreachable where you are, bind a custom domain and enter it there.",
+      "Outbound access runs through your own Cloudflare Worker. Paste a Cloudflare API Token to deploy in one click — the Worker, its Durable Object and the relay key are created in your account.\nThe Edit Cloudflare Workers token template is enough. It is used once, is never stored (the field is cleared as soon as the deploy succeeds), and a short TTL — a day, say — is recommended so you can delete it in the dashboard right after.\nTokens starting with cfat_ are account-owned (Manage Account > Account API Tokens): Cloudflare does not let them list accounts, so fill in the Account ID too (copy it from the dashboard sidebar). A user token (My Profile > API Tokens) can leave it blank — the app reads the account by itself.\nYou can also click Source for the full deploy pack (source, wrangler config and a how-to) and deploy it yourself.\nThe relay URL and key below stay editable: if *.workers.dev is unreachable where you are, bind a custom domain and enter it there.",
     webRelayApiKey: "Cloudflare API Token",
     webRelayApiKeyPlaceholder: "API Token (account or user token)",
     webRelayAccountId: "Cloudflare Account ID",
@@ -1207,7 +1207,7 @@ export const en: Messages = {
     piAuthShowAll: "Show all {{count}} providers",
     piAuthShowLess: "Hide less-used providers",
     piAuthResolutionOrder:
-      "Resolution: --api-key → credential store → env vars → custom providers",
+      "Resolution: --api-key > credential store > env vars > custom providers",
     piAuthCustomTitle: "Custom Providers",
     piAuthCustomHint: "Written to {{path}} · relays / custom models",
     piAuthEditConfig: "Edit config",
@@ -1324,7 +1324,7 @@ export const en: Messages = {
     opFailed: "Operation failed: {{message}}",
     fileTruncated: "File too large, showing partial content (read-only)",
     grantAccess:
-      "This path is outside the registered workspaces. Allow access to {{dir}}? The app will be able to read and write all files inside; you can revoke it anytime in Settings → Workspaces.",
+      "This path is outside the registered workspaces. Allow access to {{dir}}? The app will be able to read and write all files inside; you can revoke it anytime in Settings > Workspaces.",
     confirmCloseDirty:
       "“{{name}}” has unsaved changes. Closing the tab will discard them.",
   },
@@ -1675,7 +1675,7 @@ export const en: Messages = {
         "Copy the plugin template (or clone the example repo) — declare permissions in manifest.json first, then write code",
         "Every capability goes through PluginContext: register panels/commands/status bar items, KV storage; network and processes use the granted egress",
         "With the template repo: pnpm validate && pnpm build emits the three files (main.js / manifest.json / styles.css); hand-written or AI-generated plugins need no build",
-        "Plugins → Install from directory: pick the folder containing manifest.json (dist/ for the template repo); install again after changes to hot-reload",
+        "Plugins > Install from directory: pick the folder containing manifest.json (dist/ for the template repo); install again after changes to hot-reload",
       ],
       submitTitle: "Submit a plugin to the marketplace",
       submitSteps: [
@@ -1838,18 +1838,18 @@ export const en: Messages = {
     suggestionReport: "Organize the notes and verify the evidence",
     changeCardTitle: "✓ AI draft v{{version}}",
     changeGenerated: "Flow generated: {{count}} nodes, auto-laid out",
-    changeConcurrency: "Concurrency limit {{from}} → {{to}}",
-    changeRetries: "Automatic retries {{from}} → {{to}}",
-    changeApprovalAll: "Confirmation policy → every item",
-    changeApprovalRisk: "Confirmation policy → high risk only",
-    changeApprovalNone: "Confirmation policy → no human wait",
+    changeConcurrency: "Concurrency limit {{from}} > {{to}}",
+    changeRetries: "Automatic retries {{from}} > {{to}}",
+    changeApprovalAll: "Confirmation policy > every item",
+    changeApprovalRisk: "Confirmation policy > high risk only",
+    changeApprovalNone: "Confirmation policy > no human wait",
     changeVerificationOn: "Deterministic verification step enabled",
     changeVerificationOff: "Deterministic verification step disabled",
     changeNodeAdded: "Node added: {{title}}",
     changeNodeUpdated: "Node updated: {{title}}",
     changeNodeRemoved: "Node removed: {{title}}",
     changeEdges: "Connections updated: {{count}} total",
-    changeName: "Flow name → {{name}}",
+    changeName: "Flow name > {{name}}",
     conversationHintUnknown: "The request was recorded, but nothing in the flow could be changed this time.",
     conversationHintNoEngine: "No model engine is available to generate a flow. Enable one in settings first.",
     conversationHintInvalid: "No valid flow proposal was found; the draft is unchanged.",
@@ -1889,7 +1889,7 @@ export const en: Messages = {
     noDraft: "Create a flow through AI; no manual node editing",
     draftVersion: "AI draft v{{version}} · auto-layout / read-only",
     snapshotVersion: "{{runId}} · runtime snapshot v{{version}}",
-    contextIdle: "Goal → AI definition → scheduler expands instances.",
+    contextIdle: "Goal > AI definition > scheduler expands instances.",
     contextDefinition: "AI generates per-item handling, branch conditions and recovery rules. {{runNote}}",
     contextRunDraftNewer: "The draft is already v{{draft}}; this run still uses v{{run}}.",
     contextRunSameVersion: "One waiting item never blocks the others. Approve or retry from the inbox.",
@@ -1945,9 +1945,9 @@ export const en: Messages = {
     checkpointReached: "reached",
     capabilityReadOnly: "Read-only: the native layer enforces a tool whitelist on every call",
     definitionReadonlyNote: "Read-only definition. State the goal and the requested change; the AI updates rules and connections. Dragging only pans the view.",
-    openRelatedMessage: "Open related message →",
-    toInboxAttention: "Handle in inbox →",
-    toInboxFailed: "Recover in inbox →",
+    openRelatedMessage: "Open related message >",
+    toInboxAttention: "Handle in inbox >",
+    toInboxFailed: "Recover in inbox >",
     capabilitySimulated: "Demo capability (simulated; no external system is contacted)",
     capabilityAvailable: "Wired up",
     capabilityMissing: "Capability missing; cannot run",
@@ -1972,7 +1972,7 @@ export const en: Messages = {
     flowAttentionSummary: "{{waiting}} waiting · {{failed}} to recover",
     flowWaitingRange: "Waiting for the AI draft or a confirmed input range",
     editWithAi: "Edit with AI",
-    viewRun: "View run →",
+    viewRun: "View run >",
     flowsNote: "You edit the draft; the run view shows the version it started with. A live run never changes; draft revisions apply to the next run.",
 
     // Inbox
@@ -2030,7 +2030,7 @@ export const en: Messages = {
     demoFailureButton: "Simulate a node failure",
     startRunFailed: "The run could not start; see the notice above.",
 
-    // Validation (structured issue → text)
+    // Validation (structured issue > text)
     issueEmptyFlow: "The flow has no nodes yet.",
     issueDuplicateNode: "Duplicate node id: {{id}}",
     issueDuplicateEdge: "Duplicate edge id: {{id}}",

@@ -59,6 +59,19 @@ describe("formatShortcutForPlatform", () => {
       "Ctrl+Shift+Up",
     );
   });
+
+  it("labels left/right arrows with ASCII-safe words (no ←→ tofu glyphs)", () => {
+    expect(formatShortcutForPlatform("cmd+arrowright", true)).toBe("⌘Right");
+    expect(formatShortcutForPlatform("cmd+arrowleft", true)).toBe("⌘Left");
+    expect(formatShortcutForPlatform("ctrl+shift+right", false)).toBe(
+      "Ctrl+Shift+Right",
+    );
+    expect(splitShortcutForPlatform("cmd+arrowright", true)).toEqual([
+      "⌘",
+      "Right",
+    ]);
+    expect(splitShortcutForPlatform("alt+left", true)).toEqual(["⌥", "Left"]);
+  });
 });
 
 describe("matchesShortcutForPlatform", () => {

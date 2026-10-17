@@ -36,8 +36,10 @@ const KEY_LABELS: Record<string, string> = {
   enter: "↵",
   arrowup: "↑",
   arrowdown: "↓",
-  arrowleft: "←",
-  arrowright: "→",
+  // Inter / JetBrains Mono latin subsets include ↑↓ but lack ←→ (U+2190/U+2192),
+  // which render as tofu ("口"). Reuse the ASCII-safe TEXT_KEY_LABELS words.
+  arrowleft: "Left",
+  arrowright: "Right",
 };
 
 const SHIFTED_KEY_ALIASES: Record<string, string> = {

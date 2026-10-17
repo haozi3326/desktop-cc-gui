@@ -113,7 +113,7 @@ describe("ResponseCheckBadge", () => {
         });
         const text = document.querySelector('[role="tooltip"]')!.textContent;
         expect(text).toContain(
-          comparisonModel ? "opus → claude-opus-5-5" : "opus · 无法确认",
+          comparisonModel ? "opus > claude-opus-5-5" : "opus · 无法确认",
         );
         expect(text).not.toContain("不一致");
       }

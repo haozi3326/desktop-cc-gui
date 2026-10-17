@@ -448,7 +448,7 @@ export function QuestionRecord({ message }: { message: Message }) {
             const shown = Array.isArray(value) ? value.join(", ") : value ?? "";
             return (
               <div key={qi} className="break-words">
-                {q.question} → {shown}
+                {q.question}{" > "}{shown}
               </div>
             );
           })}

@@ -334,8 +334,8 @@ export const zh = {
     proxyOff: "网络代理：已关闭，点击开启",
     proxyConfigure: "网络代理未配置，点击打开设置",
     proxyTipOn: "网络代理已开启：之后新启动的引擎和终端会走代理。点击关闭",
-    proxyTipOff: "网络代理已关闭：点击开启，之后新启动的引擎和终端将使用「设置 → 网络代理」中的代理地址",
-    proxyTipConfigure: "尚未配置网络代理：点击进入「设置 → 网络代理」进行配置",
+    proxyTipOff: "网络代理已关闭：点击开启，之后新启动的引擎和终端将使用「设置 > 网络代理」中的代理地址",
+    proxyTipConfigure: "尚未配置网络代理：点击进入「设置 > 网络代理」进行配置",
     contextWindow: "上下文窗口",
     freeSpace: "空闲",
     usageInput: "输入",
@@ -356,7 +356,7 @@ export const zh = {
     slashAppMcp: "查看当前 CLI 的 MCP 服务",
     slashAppCua: "电脑操控：让 Agent 看屏幕并操作本机应用（/ccgui-cua <任务>）",
     cuaUnsupportedEngine:
-      "当前引擎不支持电脑操控（它接收不到驱动）。请切换到支持该能力的引擎，或在「设置 → 电脑操控」查看各引擎支持情况。",
+      "当前引擎不支持电脑操控（它接收不到驱动）。请切换到支持该能力的引擎，或在「设置 > 电脑操控」查看各引擎支持情况。",
     refreshUsage: "刷新",
     refreshUsageTooltip: "重新获取当前会话最新上下文占用",
     refreshing: "刷新中…",
@@ -550,7 +550,7 @@ export const zh = {
     memoryEngineHint:
       "写入需要引擎能挂载 memory 工具（Claude Code / Codex / omp）；其他引擎仍会注入已有记忆，但模型不能写入。",
     memoryEngineHintNone:
-      "当前没有可用引擎支持 memory 工具；记忆仍会注入，但模型不能写入。可在「设置 → CLI 管理」安装 Claude Code、Codex 或 omp。",
+      "当前没有可用引擎支持 memory 工具；记忆仍会注入，但模型不能写入。可在「设置 > CLI 管理」安装 Claude Code、Codex 或 omp。",
     memoryUsageLabel: "用量",
     memoryBookTitle: "你的笔记（MEMORY）",
     memoryBookDesc: "只属于这个智能体 · 上限 {{limit}} 字",
@@ -882,7 +882,7 @@ export const zh = {
     webRelay: "中转服务",
     webRelayDeploy: "部署中转",
     webRelayDeployHint:
-      "经由 Cloudflare Worker 中转实现外网访问。填 Cloudflare API Token 可一键部署：自动在你的账号里创建 Worker、Durable Object 与中转密钥。\nToken 用「Edit Cloudflare Workers」模板即可；它在部署时只用一次、程序不会保存（成功后会立刻清空输入框），建议创建时把有效期（TTL）设短——例如 1 天——部署完就能去控制台把它删掉。\n以 cfat_ 开头的是账户令牌（Manage Account → Account API Tokens 创建），Cloudflare 不允许它列出账户：把 Account ID 一起填上即可（控制台右侧栏可复制）；用户令牌（My Profile → API Tokens）可留空，程序会自己读取。\n也可以点「源码」拿到完整部署包（含源码、wrangler 配置与部署说明）自行部署。\n下方「中转服务」的地址与密钥始终可手改：部分地区无法直连 *.workers.dev，挂自定义域名后填在这里即可。",
+      "经由 Cloudflare Worker 中转实现外网访问。填 Cloudflare API Token 可一键部署：自动在你的账号里创建 Worker、Durable Object 与中转密钥。\nToken 用「Edit Cloudflare Workers」模板即可；它在部署时只用一次、程序不会保存（成功后会立刻清空输入框），建议创建时把有效期（TTL）设短——例如 1 天——部署完就能去控制台把它删掉。\n以 cfat_ 开头的是账户令牌（Manage Account > Account API Tokens 创建），Cloudflare 不允许它列出账户：把 Account ID 一起填上即可（控制台右侧栏可复制）；用户令牌（My Profile > API Tokens）可留空，程序会自己读取。\n也可以点「源码」拿到完整部署包（含源码、wrangler 配置与部署说明）自行部署。\n下方「中转服务」的地址与密钥始终可手改：部分地区无法直连 *.workers.dev，挂自定义域名后填在这里即可。",
     webRelayApiKey: "Cloudflare API Token",
     webRelayApiKeyPlaceholder: "API Token (账户或用户令牌)",
     webRelayAccountId: "Cloudflare Account ID",
@@ -1158,7 +1158,7 @@ export const zh = {
     piAuthShowAll: "显示全部 {{count}} 个供应商",
     piAuthShowLess: "收起非常用供应商",
     piAuthResolutionOrder:
-      "解析顺序：--api-key → 凭证存储 → 环境变量 → 自定义供应商",
+      "解析顺序：--api-key > 凭证存储 > 环境变量 > 自定义供应商",
     piAuthCustomTitle: "自定义供应商",
     piAuthCustomHint: "写入 {{path}} · 中转站 / 自定义模型",
     piAuthEditConfig: "编辑配置",
@@ -1269,7 +1269,7 @@ export const zh = {
     fileTruncated: "文件过大，仅显示部分内容（只读）",
     confirmCloseDirty: "“{{name}}” 有未保存的更改，关闭标签将丢弃这些更改。",
     grantAccess:
-      "该路径不在已注册的工作区内。允许访问目录 {{dir}}？授权后可读写其中的所有文件，可在「设置 → 工作区」中随时撤销。",
+      "该路径不在已注册的工作区内。允许访问目录 {{dir}}？授权后可读写其中的所有文件，可在「设置 > 工作区」中随时撤销。",
   },
   git: {
     changes: "变更",
@@ -1362,7 +1362,7 @@ export const zh = {
     createFailed: "{{branch}} 创建失败",
     retryCreate: "重试",
     dismissRow: "关闭",
-    // 错误分类（errorKind → 文案）
+    // 错误分类（errorKind > 文案）
     errorPrNotFound: "PR 不存在、已关闭且 ref 被清理，或远端不是 GitHub",
     errorFetchFailed: "fetch 失败，请检查网络后重试",
     errorBranchExists: "分支已存在，请换一个名字",
@@ -1618,7 +1618,7 @@ export const zh = {
         "复制插件模板（或克隆示例插件仓库）——先写 manifest.json 声明权限，再写代码",
         "一切能力经 PluginContext：注册面板/命令/状态栏、KV 存储，网络与进程走授权出口",
         "用模板仓库：pnpm validate && pnpm build 产出三件套（main.js / manifest.json / styles.css）；手写或 AI 生成的插件不需要构建",
-        "插件 → 从本地目录安装，选有 manifest.json 的那一层（模板仓库是 dist/）；改完重新安装即热重载",
+        "插件 > 从本地目录安装，选有 manifest.json 的那一层（模板仓库是 dist/）；改完重新安装即热重载",
       ],
       submitTitle: "提交插件到市场",
       submitSteps: [
@@ -1780,18 +1780,18 @@ export const zh = {
     suggestionReport: "整理资料并核查依据",
     changeCardTitle: "✓ AI 草稿 v{{version}}",
     changeGenerated: "已生成流程：{{count}} 个节点，自动布局",
-    changeConcurrency: "并发上限 {{from}} → {{to}}",
-    changeRetries: "自动重试 {{from}} → {{to}} 次",
-    changeApprovalAll: "人工确认策略 → 每一项都确认",
-    changeApprovalRisk: "人工确认策略 → 仅高风险",
-    changeApprovalNone: "人工确认策略 → 不等待人工",
+    changeConcurrency: "并发上限 {{from}} > {{to}}",
+    changeRetries: "自动重试 {{from}} > {{to}} 次",
+    changeApprovalAll: "人工确认策略 > 每一项都确认",
+    changeApprovalRisk: "人工确认策略 > 仅高风险",
+    changeApprovalNone: "人工确认策略 > 不等待人工",
     changeVerificationOn: "启用确定性核查步骤",
     changeVerificationOff: "关闭确定性核查步骤",
     changeNodeAdded: "新增节点：{{title}}",
     changeNodeUpdated: "更新节点：{{title}}",
     changeNodeRemoved: "移除节点：{{title}}",
     changeEdges: "连线更新：共 {{count}} 条",
-    changeName: "流程名称 → {{name}}",
+    changeName: "流程名称 > {{name}}",
     conversationHintUnknown: "要求已记录，但这次没有可应用的流程改动。",
     conversationHintNoEngine: "未接入可用的模型引擎，无法生成流程。请先在设置中启用引擎。",
     conversationHintInvalid: "没有识别到合法的流程提案，草稿未变。",
@@ -1831,7 +1831,7 @@ export const zh = {
     noDraft: "通过 AI 创建流程，不手工搭节点",
     draftVersion: "AI 草稿 v{{version}} · 自动布局 / 仅观察",
     snapshotVersion: "{{runId}} · 执行快照 v{{version}}",
-    contextIdle: "目标 → AI 生成定义 → 调度器展开实例。",
+    contextIdle: "目标 > AI 生成定义 > 调度器展开实例。",
     contextDefinition: "AI 生成逐项处理、条件分流与恢复规则。{{runNote}}",
     contextRunDraftNewer: "草稿已是 v{{draft}}，本次仍用 v{{run}}。",
     contextRunSameVersion: "单项等待不阻塞其他任务。审批和重试请到收件箱。",
@@ -1887,9 +1887,9 @@ export const zh = {
     checkpointReached: "已到达",
     capabilityReadOnly: "只读约束：原生层为每次调用兑付工具白名单",
     definitionReadonlyNote: "只读定义。提出目标和修改要求后，由 AI 更新规则与连接；手工拖拽只允许平移整个视图。",
-    openRelatedMessage: "打开关联消息 →",
-    toInboxAttention: "到收件箱处理 →",
-    toInboxFailed: "到收件箱恢复 →",
+    openRelatedMessage: "打开关联消息 >",
+    toInboxAttention: "到收件箱处理 >",
+    toInboxFailed: "到收件箱恢复 >",
     capabilitySimulated: "演示能力（模拟执行，不访问外部系统）",
     capabilityAvailable: "已接入",
     capabilityMissing: "缺少能力，不可运行",
@@ -1914,7 +1914,7 @@ export const zh = {
     flowAttentionSummary: "{{waiting}} 待确认 · {{failed}} 待恢复",
     flowWaitingRange: "等待 AI 生成或确认运行范围",
     editWithAi: "与 AI 修改",
-    viewRun: "查看运行 →",
+    viewRun: "查看运行 >",
     flowsNote: "编辑的是草稿；查看运行时展示启动时的版本。运行中的版本不变，修订草稿只作用于下一次运行。",
 
     // 收件箱
@@ -1972,7 +1972,7 @@ export const zh = {
     demoFailureButton: "模拟节点失败",
     startRunFailed: "流程启动失败；详细信息见上方提示。",
 
-    // 校验（结构化 issue → 文案）
+    // 校验（结构化 issue > 文案）
     issueEmptyFlow: "流程还没有节点。",
     issueDuplicateNode: "节点 id 重复：{{id}}",
     issueDuplicateEdge: "连线 id 重复：{{id}}",
