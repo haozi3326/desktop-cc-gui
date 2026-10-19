@@ -34,7 +34,7 @@
     panel.className = "boot-failure";
 
     var title = document.createElement("h1");
-    title.textContent = "CC GUI 启动失败 / Failed to start";
+    title.textContent = "手扶拖拉机启动失败 / Failed to start";
     panel.appendChild(title);
 
     if (reason) {
