@@ -85,10 +85,26 @@
 }
 
 /* Composer rich-text field (contentEditable) + inline file tags ("chips").
- * Ported from desktop-cc-gui's .file-tag styles, mapped to our tokens. */
+ * Ported from desktop-cc-gui's .file-tag styles, mapped to our tokens.
+ *
+ * Font stack (composer-local): Inter Variable latin includes ↑↓ but not ←→
+ * (U+2190/U+2192). On zh-Hans macOS, ui-sans-serif/system-ui often resolve to
+ * PingFang, which also lacks those arrows — so a → that lands in the field
+ * paints as narrow tofu. Insert Helvetica / Apple Symbols / Segoe UI Symbol
+ * before the generic sans so symbols render without a full CJK font swap. */
 .composer-editable {
   white-space: pre-wrap;
   word-break: break-word;
+  font-family:
+    var(--font-inter),
+    "Helvetica Neue", Helvetica,
+    "Apple Symbols",
+    "Segoe UI Symbol",
+    "Noto Sans Symbols 2",
+    "Noto Sans Symbols",
+    ui-sans-serif,
+    system-ui,
+    sans-serif;
 }
 .composer-editable:empty::before {
   content: attr(data-placeholder);

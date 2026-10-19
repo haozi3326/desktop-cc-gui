@@ -261,3 +261,83 @@ describe("ComposerEditable 粘贴文件", () => {
     expect(props.onPastePaths).not.toHaveBeenCalled();
   });
 });
+
+
+describe("ComposerEditable ArrowRight 不插字", () => {
+  let container: HTMLDivElement;
+  let root: Root;
+  let editable: HTMLDivElement;
+  let props: ComponentProps<typeof ComposerEditable>;
+
+  beforeEach(async () => {
+    container = document.createElement("div");
+    document.body.appendChild(container);
+    root = createRoot(container);
+    props = makeProps();
+    await act(async () => root.render(<ComposerEditable {...props} />));
+    editable = props.editableRef.current!;
+    editable.textContent = "";
+  });
+
+  afterEach(async () => {
+    await act(async () => root.unmount());
+    container.remove();
+    vi.restoreAllMocks();
+  });
+
+  it("连按 ArrowRight：keydown 不改 textContent（插字证伪）", async () => {
+    for (let i = 0; i < 10; i++) {
+      await act(async () => {
+        editable.dispatchEvent(
+          new KeyboardEvent("keydown", {
+            bubbles: true,
+            cancelable: true,
+            key: "ArrowRight",
+          }),
+        );
+      });
+    }
+    expect(editable.textContent).toBe("");
+  });
+
+  it("ArrowRight + beforeinput insertText(→) 被拦住", async () => {
+    await act(async () => {
+      editable.dispatchEvent(
+        new KeyboardEvent("keydown", {
+          bubbles: true,
+          cancelable: true,
+          key: "ArrowRight",
+        }),
+      );
+      const before = new InputEvent("beforeinput", {
+        bubbles: true,
+        cancelable: true,
+        inputType: "insertText",
+        data: "→",
+      });
+      editable.dispatchEvent(before);
+      expect(before.defaultPrevented).toBe(true);
+    });
+    expect(editable.textContent).toBe("");
+  });
+
+  it("普通按键 insertText 仍放行", async () => {
+    await act(async () => {
+      editable.dispatchEvent(
+        new KeyboardEvent("keydown", {
+          bubbles: true,
+          cancelable: true,
+          key: "a",
+        }),
+      );
+      const before = new InputEvent("beforeinput", {
+        bubbles: true,
+        cancelable: true,
+        inputType: "insertText",
+        data: "a",
+      });
+      editable.dispatchEvent(before);
+      expect(before.defaultPrevented).toBe(false);
+    });
+  });
+});

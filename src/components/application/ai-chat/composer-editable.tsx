@@ -3,6 +3,8 @@ import {
   type MutableRefObject,
   type RefObject,
   useCallback,
+  useEffect,
+  useRef,
 } from "react";
 import { useTranslation } from "react-i18next";
 import {
@@ -18,6 +20,7 @@ import { type SlashCommandMenuHandle } from "@/components/application/ai-chat/sl
 import { type BotMenuHandle } from "@/components/application/ai-chat/bot-menu";
 import { type PromptMenuHandle } from "@/components/application/ai-chat/prompt-menu";
 import { cx } from "@/utils/cx";
+import { shouldBlockNavInsert } from "@/components/application/ai-chat/composer-codepoints";
 
 /**
  * ComposerEditable — the composer's contentEditable field and its event
@@ -25,8 +28,10 @@ import { cx } from "@/utils/cx";
  * the Enter keydown that commits the candidate, so Enter is gated on a sync
  * ref plus the IME keyCode 229), mention-picker key
  * delegation, ghost-text Tab accept, ArrowUp/ArrowDown history recall, the
- * configured send gesture, and file/text paste. All state lives in
- * the composer and arrives as props.
+ * configured send gesture, and file/text paste. Arrow/nav keys stay
+ * caret-only: a beforeinput guard drops insertText paired with a nav key
+ * (WebKit/IME quirk). Symbol glyph coverage is CSS-side (.composer-editable
+ * font stack). All state lives in the composer and arrives as props.
  */
 export function ComposerEditable({
   editableRef,
@@ -115,6 +120,22 @@ export function ComposerEditable({
   );
   // Send gesture labels name the real modifier: ⌘ on macOS, Ctrl elsewhere.
   const isMac = navigator.platform.includes("Mac");
+  /** Last keydown key; pairs with beforeinput to drop nav-key insertText. */
+  const lastKeyRef = useRef<string | null>(null);
+  // Native beforeinput: React's onBeforeInput is awkward to assert in jsdom
+  // and some WebKit paths emit insertText for ArrowRight (often U+2192).
+  useEffect(() => {
+    const el = editableRef.current;
+    if (!el) return;
+    const onBeforeInput = (event: Event) => {
+      const ne = event as InputEvent;
+      if (shouldBlockNavInsert(lastKeyRef.current, ne.inputType, ne.data)) {
+        event.preventDefault();
+      }
+    };
+    el.addEventListener("beforeinput", onBeforeInput);
+    return () => el.removeEventListener("beforeinput", onBeforeInput);
+  }, [editableRef]);
   return (
     <div
       ref={editableRef}
@@ -151,6 +172,7 @@ export function ComposerEditable({
         updateTriggers();
       }}
       onKeyDown={(event) => {
+        lastKeyRef.current = event.key;
         // Leave active composition to the IME. WebKit can report the final
         // candidate-confirming Enter after compositionend; keyCode 229 still
         // identifies it. Preserve IME default behavior and let the next
