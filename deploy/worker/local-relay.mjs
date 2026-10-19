@@ -6,7 +6,7 @@
  *
  *   bun deploy/worker/local-relay.mjs --key my-secret --port 8787
  *
- * Then in CC GUI → 设置 → 手机访问 → 外网访问, set the address to
+ * Then in 手扶拖拉机 → 设置 → 手机访问 → 外网访问, set the address to
  * http://127.0.0.1:8787 with that key.
  */
 

@@ -477,7 +477,7 @@ fn zip_store(files: &[(&str, &[u8])]) -> Vec<u8> {
 /// to `key`. The user can read every byte before deploying it.
 fn deploy_pack(key: &str) -> Vec<u8> {
     let wrangler = format!(
-        r#"name = "ccgui-relay"
+        r#"name = "hand-tractor-relay"
 main = "src/index.js"
 compatibility_date = "2025-01-01"
 
@@ -503,7 +503,7 @@ RELAY_KEY = "{key}"
 1. 装 Node ≥ 16.17（只为拿 npx wrangler）。
    Install Node ≥ 16.17 (only to get npx wrangler).
 2. npx wrangler login      # 浏览器授权一次 / authorize once in the browser
-3. npx wrangler deploy     # 输出 https://ccgui-relay.<你的子域>.workers.dev
+3. npx wrangler deploy     # 输出 https://hand-tractor-relay.<你的子域>.workers.dev
 4. 手扶拖拉机 → 设置 → 远程访问 → 外网访问：
    中转地址 = 上一步的 URL，中转密钥 = 本包 wrangler.toml 里的 RELAY_KEY。
    手扶拖拉机 → Settings → Remote access → Outbound: relay URL = the URL above,
@@ -530,9 +530,9 @@ RELAY_KEY = "{key}"
   relay URL in 手扶拖拉机; that field stays editable.
 "#;
     zip_store(&[
-        ("ccgui-relay/README.txt", readme.as_bytes()),
-        ("ccgui-relay/wrangler.toml", wrangler.as_bytes()),
-        ("ccgui-relay/src/index.js", WORKER_SOURCE.as_bytes()),
+        ("hand-tractor-relay/README.txt", readme.as_bytes()),
+        ("hand-tractor-relay/wrangler.toml", wrangler.as_bytes()),
+        ("hand-tractor-relay/src/index.js", WORKER_SOURCE.as_bytes()),
     ])
 }
 
@@ -550,7 +550,7 @@ pub fn relay_deploy_pack(path: String, key: Option<String>) -> Result<String, St
 }
 
 const API_BASE: &str = "https://api.cloudflare.com/client/v4";
-const SCRIPT_NAME: &str = "ccgui-relay";
+const SCRIPT_NAME: &str = "hand-tractor-relay";
 
 #[derive(serde::Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -1423,9 +1423,9 @@ mod tests {
         assert_eq!(
             names,
             [
-                "ccgui-relay/README.txt",
-                "ccgui-relay/wrangler.toml",
-                "ccgui-relay/src/index.js",
+                "hand-tractor-relay/README.txt",
+                "hand-tractor-relay/wrangler.toml",
+                "hand-tractor-relay/src/index.js",
             ]
         );
         assert!(String::from_utf8_lossy(&pack).contains(key), "key baked in");
