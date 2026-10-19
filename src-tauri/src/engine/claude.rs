@@ -686,6 +686,28 @@ fn tool_result_error_blocks(value: &Value) -> Vec<(Option<String>, String)> {
     out
 }
 
+/// Pull a human error detail out of `api_retry.error`, which may be a plain
+/// string or a nested object (`{ "message": "…" }` / `{ "error": "…" }`).
+/// Empty / `"unknown"` details are dropped so the caller can fall back.
+fn api_retry_error_detail(value: &Value) -> Option<&str> {
+    let err = value.get("error")?;
+    if let Some(s) = err.as_str() {
+        let t = s.trim();
+        return (!t.is_empty() && t != "unknown").then_some(t);
+    }
+    if let Some(obj) = err.as_object() {
+        for key in ["message", "error", "msg", "detail"] {
+            if let Some(s) = obj.get(key).and_then(Value::as_str) {
+                let t = s.trim();
+                if !t.is_empty() && t != "unknown" {
+                    return Some(t);
+                }
+            }
+        }
+    }
+    None
+}
+
 /// Human-readable line for a `system/api_retry` event.
 fn format_api_retry(value: &Value) -> String {
     let attempt = value.get("attempt").and_then(Value::as_u64).unwrap_or(0);
@@ -697,11 +719,7 @@ fn format_api_retry(value: &Value) -> String {
         .get("retry_delay_ms")
         .and_then(Value::as_u64)
         .unwrap_or(0);
-    let detail = value
-        .get("error")
-        .and_then(Value::as_str)
-        .map(str::trim)
-        .filter(|e| !e.is_empty() && *e != "unknown");
+    let detail = api_retry_error_detail(value);
     // Keep the upstream detail (e.g. "No available channel for model …")
     // even when a status code is present — the UI uses that text to fail
     // channel-less models fast instead of hanging on 10 retries.
@@ -1324,6 +1342,32 @@ mod tests {
             "retry_delay_ms": 1000,
             "error_status": 503,
             "error": "No available channel for model deepseek-flash under group default (distributor)",
+            "session_id": "s-1"
+        })
+        .to_string();
+        let mut out = Vec::new();
+        ClaudeEngine::new().parse_line(&line, &mut out);
+        let message = out.iter().find_map(|e| match e {
+            EngineEvent::Retry { message, .. } => Some(message.as_str()),
+            _ => None,
+        });
+        let message = message.expect("retry event");
+        assert!(message.contains("503"), "{message}");
+        assert!(message.contains("No available channel"), "{message}");
+    }
+
+    fn api_retry_preserves_no_channel_detail_from_nested_error_object() {
+        let line = serde_json::json!({
+            "type": "system",
+            "subtype": "api_retry",
+            "attempt": 1,
+            "max_retries": 10,
+            "retry_delay_ms": 1000,
+            "error_status": 503,
+            "error": {
+                "type": "api_error",
+                "message": "No available channel for model deepseek-flash under group default (distributor)"
+            },
             "session_id": "s-1"
         })
         .to_string();

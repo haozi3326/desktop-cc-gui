@@ -58,11 +58,16 @@ export function MessageQueue({ queue, onRemove, onMove, onSendNow, onClear, clas
       )}
     >
       <div className="flex items-center justify-between gap-2 px-3 pt-2 pb-1">
-        <span className="flex min-w-0 items-center gap-1.5 text-caption-1-medium text-text-secondary">
-          <ListOrdered className="size-3.5 shrink-0 text-foreground-icon-tertiary" aria-hidden />
-          <span className="truncate">{t("chat.queueTitle")}</span>
-          <span className="shrink-0 rounded-full bg-background-tertiary-default px-1.5 py-px text-caption-2-medium text-text-tertiary">
-            {queue.length}
+        <span className="flex min-w-0 flex-col gap-0.5 text-caption-1-medium text-text-secondary">
+          <span className="flex min-w-0 items-center gap-1.5">
+            <ListOrdered className="size-3.5 shrink-0 text-foreground-icon-tertiary" aria-hidden />
+            <span className="truncate">{t("chat.queueTitle")}</span>
+            <span className="shrink-0 rounded-full bg-background-tertiary-default px-1.5 py-px text-caption-2-medium text-text-tertiary">
+              {queue.length}
+            </span>
+          </span>
+          <span className="truncate pl-5 text-caption-2-regular text-text-tertiary">
+            {t("chat.queueHint")}
           </span>
         </span>
         {onClear && (

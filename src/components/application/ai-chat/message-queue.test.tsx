@@ -38,11 +38,18 @@ function render(props: Partial<Parameters<typeof MessageQueue>[0]> = {}) {
 }
 
 describe("MessageQueue", () => {
+
+  it("shows a queue hint that is not reconnect copy", async () => {
+    await render();
+    expect(container.textContent).toContain("排队消息");
+    expect(container.textContent).toContain("本轮结束后自动发送，不是断线重连");
+  });
+
   it("offers send-now per row and reports the row it belongs to", async () => {
     const onSendNow = vi.fn();
     await render({ onSendNow });
 
-    const rows = [...container.querySelectorAll("button[aria-label='发送']")];
+    const rows = [...container.querySelectorAll("button[aria-label='立即发送（打断本轮，不是重连）']")];
     expect(rows).toHaveLength(2);
 
     // Newest first: the top row is the second message.

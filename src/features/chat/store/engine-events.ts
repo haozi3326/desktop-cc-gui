@@ -1660,7 +1660,15 @@ function onWarn(event: ChatEngineEvent, key: string, deps: EngineEventDeps) {
   // banner, but the turn is still alive — streaming state, unflushed chunks,
   // and run routing all stay untouched. Cleared by onDone when the turn
   // recovers, overwritten by onError if it ends up failing.
-  patchSession(deps.set, key, { error: event.data as string });
+  //
+  // Exception: channel-less / model_not_found shapes never recover — treat
+  // like a retry fail-fast so the UI does not sit on 重试中 N/10.
+  const message = typeof event.data === "string" ? event.data : "";
+  if (isNoChannelRetryMessage(message)) {
+    failNoChannelRetry(event, key, deps);
+    return;
+  }
+  patchSession(deps.set, key, { error: message });
 }
 
 /**
@@ -1679,14 +1687,29 @@ function onRetry(event: ChatEngineEvent, key: string, deps: EngineEventDeps) {
     attempt?: unknown;
     max?: unknown;
     message?: unknown;
+    error?: unknown;
+    detail?: unknown;
   };
   const attempt = typeof data.attempt === "number" ? data.attempt : 0;
   if (attempt <= 0) {
     clearRetry(key, deps);
     return;
   }
+  // Prefer the formatted message; also probe raw error/detail in case a
+  // bridge omitted the channel text from `message` (field Applications hung
+  // on 重试中 3/10 while jsonl already had the 503 no-channel line).
   const message = typeof data.message === "string" ? data.message : "";
-  if (isNoChannelRetryMessage(message)) {
+  const extras: string[] = [];
+  for (const v of [data.error, data.detail]) {
+    if (typeof v === "string" && v.trim()) extras.push(v);
+    else if (v && typeof v === "object" && "message" in v) {
+      const nested = (v as { message?: unknown }).message;
+      if (typeof nested === "string" && nested.trim()) extras.push(nested);
+    }
+  }
+  const haystack = [message, ...extras].join("\n");
+  if (isNoChannelRetryMessage(haystack)) {
+    // ≤1 retry then stop: first matching attempt settles immediately.
     failNoChannelRetry(event, key, deps);
     return;
   }

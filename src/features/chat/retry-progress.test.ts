@@ -105,9 +105,66 @@ describe("provider retry progress", () => {
     const s = useChatStore.getState().bySession[KEY]!;
     expect(s.retry).toBeNull();
     expect(s.streaming).toBe(false);
-    expect(s.error).toMatch(/没渠道|no channel/i);
+    expect(s.error).toMatch(/无可用渠道|没渠道|no channel|no available channel/i);
     expect(useChatStore.getState().retryingByKey[KEY]).toBeUndefined();
     expect(vi.mocked(ipc.interruptSession)).toHaveBeenCalled();
+  });
+
+  it("fails fast when channel detail rides on error field, not message", () => {
+    handleEngineEvents(
+      [
+        ev("retry", 2, {
+          attempt: 1,
+          max: 10,
+          message: "API error (HTTP 503); retrying (1/10) in 1.0s",
+          error: "No available channel for model deepseek-flash under group default (distributor)",
+        }),
+      ],
+      deps(),
+    );
+
+    const s = useChatStore.getState().bySession[KEY]!;
+    expect(s.retry).toBeNull();
+    expect(s.streaming).toBe(false);
+    expect(s.error).toMatch(/无可用渠道|没渠道|no channel|no available channel/i);
+    expect(vi.mocked(ipc.interruptSession)).toHaveBeenCalled();
+  });
+
+  it("fails fast on warn carrying no-channel text", () => {
+    handleEngineEvents(
+      [
+        ev(
+          "warn",
+          2,
+          "API error (HTTP 503): No available channel for model deepseek-flash under group default (distributor)",
+        ),
+      ],
+      deps(),
+    );
+
+    const s = useChatStore.getState().bySession[KEY]!;
+    expect(s.retry).toBeNull();
+    expect(s.streaming).toBe(false);
+    expect(s.error).toMatch(/无可用渠道|没渠道|no channel|no available channel/i);
+    expect(vi.mocked(ipc.interruptSession)).toHaveBeenCalled();
+  });
+
+  it("does not paint 重试中 after a second no-channel attempt", () => {
+    handleEngineEvents(
+      [
+        ev("retry", 2, {
+          attempt: 3,
+          max: 10,
+          message:
+            "API error (HTTP 503): No available channel for model deepseek-flash under group default (distributor); retrying (3/10) in 5.0s",
+        }),
+      ],
+      deps(),
+    );
+    const s = useChatStore.getState().bySession[KEY]!;
+    expect(s.retry).toBeNull();
+    expect(s.streaming).toBe(false);
+    expect(useChatStore.getState().retryingByKey[KEY]).toBeUndefined();
   });
 
   it("tracks the latest attempt", () => {

@@ -129,15 +129,30 @@ export function resolveSessionModel(
   return engineDefault;
 }
 
-/** True when a provider-retry message means the model has no channel —
- *  retrying will not help. Matched against the CLI `api_retry` detail line. */
+/** True when a provider-retry / warn / error message means the model has no
+ *  channel — retrying will not help. Matched against the CLI `api_retry`
+ *  detail line (and the same shape when it arrives via warn/error).
+ *  Covers the forensics shape: HTTP 503 + "No available channel for model …
+ *  under group default (distributor)". */
 export function isNoChannelRetryMessage(message: string): boolean {
   const m = message.toLowerCase();
-  return (
-    m.includes("no available channel") ||
-    m.includes("model_not_found") ||
-    (m.includes("http 503") && m.includes("channel"))
-  );
+  if (!m) return false;
+  if (m.includes("no available channel") || m.includes("model_not_found")) return true;
+  // Chinese gateway / UI copy variants
+  if (m.includes("无可用渠道") || m.includes("没渠道")) return true;
+  // HTTP 503 with channel / distributor / group markers (detail may be nested
+  // or partially stripped — still fail-fast rather than hang on 重试中 N/10)
+  if (m.includes("http 503") || m.includes("status 503") || /\b503\b/.test(m)) {
+    if (
+      m.includes("channel") ||
+      m.includes("distributor") ||
+      m.includes("under group") ||
+      m.includes("无可用")
+    ) {
+      return true;
+    }
+  }
+  return false;
 }
 
 /** The reasoning level one session runs with. A native session owns its level

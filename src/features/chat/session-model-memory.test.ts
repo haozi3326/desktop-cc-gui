@@ -307,7 +307,19 @@ describe("resolveSessionModel ignores history served ids", () => {
         "API error (HTTP 503): No available channel for model deepseek-flash; retrying (1/10) in 1.0s",
       ),
     ).toBe(true);
+    expect(
+      isNoChannelRetryMessage(
+        "API error (HTTP 503): No available channel for model deepseek-flash under group default (distributor); retrying (1/10) in 1.0s",
+      ),
+    ).toBe(true);
+    expect(
+      isNoChannelRetryMessage(
+        "API error (HTTP 503): under group default (distributor); retrying (3/10) in 5.0s",
+      ),
+    ).toBe(true);
+    expect(isNoChannelRetryMessage("无可用渠道：这模型没渠道")).toBe(true);
     expect(isNoChannelRetryMessage("API error (HTTP 529); retrying (3/10) in 9.5s")).toBe(false);
+    expect(isNoChannelRetryMessage("API error (HTTP 503); retrying (1/10) in 1.0s")).toBe(false);
     expect(isNoChannelRetryMessage("model_not_found")).toBe(true);
   });
 });
