@@ -228,7 +228,7 @@ export function WebRelayCard({
         <Input
           aria-label={t("settings.webRelayUrl")}
           size="small"
-          placeholder="https://ccgui-relay.<account>.workers.dev"
+          placeholder="https://hand-tractor-relay.<account>.workers.dev"
           value={relayUrl}
           onChange={onRelayUrlChange}
         />
