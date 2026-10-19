@@ -247,7 +247,7 @@ export function useCrashReport(): CrashReport | null {
 /** Human-readable dump for the "copy details" action. */
 export function formatCrashReport(report: CrashReport): string {
   const lines = [
-    "舵轮 crash report",
+    "手扶拖拉机 crash report",
     `time:    ${report.time}`,
     `source:  ${report.source}`,
     `version: ${report.appVersion ?? "unknown"}`,

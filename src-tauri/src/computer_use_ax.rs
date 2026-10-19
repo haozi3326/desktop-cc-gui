@@ -331,7 +331,7 @@ mod imp {
             Err(AX_ERROR_API_DISABLED) => {
                 release(system as CFTypeRef);
                 return Err(
-                    "Accessibility API is disabled for this app (AXIsProcessTrusted may report a stale parent grant). Grant Accessibility to 舵轮 in Settings → Computer Use."
+                    "Accessibility API is disabled for this app (AXIsProcessTrusted may report a stale parent grant). Grant Accessibility to 手扶拖拉机 in Settings → Computer Use."
                         .into(),
                 );
             }

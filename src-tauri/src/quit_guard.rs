@@ -1,6 +1,6 @@
 //! Quit guard for macOS.
 //!
-//! Cmd+Q, Dock → Quit, and `osascript -e 'tell application "舵轮" to quit'`
+//! Cmd+Q, Dock → Quit, and `osascript -e 'tell application "手扶拖拉机" to quit'`
 //! all go through Cocoa's `-[NSApplication terminate:]`, which never reaches
 //! Tauri's `RunEvent::ExitRequested` on this runtime: tao's app delegate does
 //! not implement `applicationShouldTerminate:`, and the runtime only emits
