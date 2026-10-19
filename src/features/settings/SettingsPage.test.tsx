@@ -192,18 +192,17 @@ async function render(engines: EngineInfo[], page = "stub") {
 
 
 describe("SettingsPage misc rail", () => {
-  it("lists 内测功能, 检查更新, 社区与反馈 and 性能诊断 in that order", async () => {
+  it("lists 内测功能, 社区与反馈 and 性能诊断 in that order (no 检查更新)", async () => {
     await render([]);
 
     const labels = navLabels();
     const betaAt = labels.indexOf(i18n.t("settings.betaFeatures"));
-    const updateAt = labels.indexOf(i18n.t("settings.checkUpdates"));
     const aboutAt = labels.indexOf(i18n.t("settings.about"));
     const diagnosticsAt = labels.indexOf(i18n.t("diagnostics.title"));
     expect(betaAt).toBeGreaterThan(-1);
-    expect(updateAt).toBeGreaterThan(betaAt);
-    expect(aboutAt).toBeGreaterThan(updateAt);
+    expect(aboutAt).toBeGreaterThan(betaAt);
     expect(diagnosticsAt).toBeGreaterThan(aboutAt);
+    expect(labels).not.toContain(i18n.t("settings.checkUpdates"));
   });
 });
 
@@ -225,7 +224,6 @@ describe("SettingsPage system rail", () => {
     // lead that group.
     expect(itemsUnder("settings.groupMisc")).toEqual([
       i18n.t("settings.betaFeatures"),
-      i18n.t("settings.checkUpdates"),
       i18n.t("settings.about"),
       i18n.t("diagnostics.title"),
       i18n.t("settings.pet"),

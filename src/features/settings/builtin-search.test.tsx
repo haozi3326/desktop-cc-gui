@@ -57,7 +57,6 @@ import { PetSection } from "./PetSection";
 import { ProxySection } from "./ProxySection";
 import { ENGINE_IDS, type EngineId } from "./providers";
 import type { CliConfigState } from "./useCliConfig";
-import { UpdateSection } from "./UpdateSection";
 import { WebAccessSection } from "./WebAccessSection";
 import { WorkspacesSection } from "./WorkspacesSection";
 import { useChatStore } from "@/features/chat/store";
@@ -139,7 +138,6 @@ const PAGES: PageSpec[] = [
   { page: "pet", render: () => <PetSection /> },
   { page: "proxy", render: () => <ProxySection /> },
   { page: "shortcuts", render: () => <ShortcutsSection /> },
-  { page: "update", render: () => <UpdateSection /> },
   { page: "betaFeatures", render: () => <BetaFeaturesSection /> },
   { page: "diagnostics", render: () => <PerformanceDiagnosticsSection /> },
   { page: "agents", render: () => <BotsPane /> },

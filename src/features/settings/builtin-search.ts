@@ -351,16 +351,6 @@ export const builtinSearchEntries: SettingsSearchEntry[] = [
 
   ...shortcutEntries,
 
-  // 检查更新：品牌行没有译文（labelText），检查动作行与页标题同名，不再重复
-  // 一层面包屑。
-  { page: "update", anchor: "appVersion", labelText: "舵轮" },
-  {
-    page: "update",
-    anchor: "checkUpdates",
-    labelKey: "settings.checkUpdates",
-    keywords: ["update", "version"],
-  },
-
   ...betaFeatureEntries,
 
   ...webAccessEntries,

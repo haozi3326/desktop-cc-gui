@@ -20,8 +20,6 @@
         { "url": "http://localhost:*" }
       ]
     },
-    "dialog:default",
-    "updater:default",
-    "process:default"
+    "dialog:default"
   ]
 }

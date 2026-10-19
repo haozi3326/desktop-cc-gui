@@ -42,7 +42,6 @@ pub mod settings;
 pub mod skills_hub;
 pub mod slash_commands;
 pub mod terminal;
-pub mod updater;
 pub mod usage;
 pub mod web;
 
@@ -116,8 +115,6 @@ pub fn run() {
     plugins::asset_protocol::register(preview_protocol::register(tauri::Builder::default()))
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_dialog::init())
-        .plugin(tauri_plugin_updater::Builder::new().build())
-        .plugin(tauri_plugin_process::init())
         .plugin(
             tauri_plugin_global_shortcut::Builder::new()
                 .with_handler(|app, _shortcut, event| {
@@ -402,8 +399,6 @@ pub fn run() {
             pet_overlay::pet_set_scale,
             pet_overlay::pet_set_state,
             pet_overlay::pet_save_position,
-            // updater
-            updater::fetch_latest_release_info,
             // plugins
             plugins::plugin_list,
             plugins::plugin_install_from_path,

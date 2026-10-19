@@ -9,7 +9,6 @@ import Archive from "lucide-react/dist/esm/icons/archive";
 import Info from "lucide-react/dist/esm/icons/info";
 import Activity from "lucide-react/dist/esm/icons/activity";
 import FlaskConical from "lucide-react/dist/esm/icons/flask-conical";
-import RefreshCw from "lucide-react/dist/esm/icons/refresh-cw";
 import Bot from "lucide-react/dist/esm/icons/bot";
 import FileText from "lucide-react/dist/esm/icons/file-text";
 import Smartphone from "lucide-react/dist/esm/icons/smartphone";
@@ -35,7 +34,6 @@ import { CliConfigSection } from "./CliConfigSection";
 import { AboutSection } from "./AboutSection";
 import { PerformanceDiagnosticsSection } from "./PerformanceDiagnostics";
 import { BetaFeaturesSection } from "./BetaFeaturesSection";
-import { UpdateSection } from "./UpdateSection";
 import { WebAccessSection } from "./WebAccessSection";
 import { UsageSection } from "./UsageSection";
 import { ShortcutsSection } from "@/features/shortcuts/ShortcutsSection";
@@ -229,15 +227,6 @@ settingsRegistry.register({
   group: "misc",
   order: 4,
   component: PetSection,
-});
-settingsRegistry.register({
-  id: "update",
-  key: "update",
-  label: () => i18n.t("settings.checkUpdates"),
-  icon: RefreshCw,
-  group: "misc",
-  order: 1,
-  component: UpdateSection,
 });
 settingsRegistry.register({
   id: "about",
