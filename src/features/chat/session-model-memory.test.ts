@@ -132,7 +132,15 @@ describe("a session's provider and model memory", () => {
 
   it("keeps the qualified model when the engine reports the bare name", () => {
     useChatStore.setState({
-      bySession: { [KEY]: { ...EMPTY_SESSION, activeModel: SENT } },
+      bySession: {
+        [KEY]: {
+          ...EMPTY_SESSION,
+          activeModel: SENT,
+          messages: [
+            { seq: 1, role: "assistant", text: "", ts: null, live: true, model: SENT },
+          ],
+        },
+      },
     });
 
     handleEngineEvents(
@@ -141,12 +149,15 @@ describe("a session's provider and model memory", () => {
     );
     expect(useChatStore.getState().bySession[KEY]!.activeModel).toBe(SENT);
 
-    // A genuinely different model still lands.
+    // A genuinely different *served* id updates the live row for display but
+    // must NOT stick into activeModel (next --model memory).
     handleEngineEvents(
       [{ runId: "run-2", sessionId: SID, engine: "omp", seq: 2, kind: "model", data: "glm-5.3" }],
       deps(),
     );
-    expect(useChatStore.getState().bySession[KEY]!.activeModel).toBe("glm-5.3");
+    const session = useChatStore.getState().bySession[KEY]!;
+    expect(session.activeModel).toBe(SENT);
+    expect(session.messages.find((m) => m.live)?.model).toBe("glm-5.3");
   });
 
   it("tracks the effort the run actually reports, ignoring blanks and repeats", () => {
@@ -301,6 +312,24 @@ describe("resolveSessionModel ignores history served ids", () => {
     expect(resolveSessionModel(tab, session, "default")).toBe("coding-claude");
   });
 
+  it("self-heals bare sticky served id in activeModel back to config", () => {
+    const tab = { engine: "claude", sessionId: SID, workspacePath: WS };
+    const session = {
+      ...EMPTY_SESSION,
+      activeModel: "deepseek-flash",
+      messages: [
+        { seq: 1, role: "assistant" as const, text: "ok", ts: null, model: "deepseek-flash" },
+      ],
+    };
+    expect(resolveSessionModel(tab, session, "coding-claude")).toBe("coding-claude");
+  });
+
+  it("self-heals meta-only bare sticky served id when history is empty", () => {
+    const tab = { engine: "claude", sessionId: SID, workspacePath: WS };
+    const session = { ...EMPTY_SESSION, activeModel: "deepseek-flash" };
+    expect(resolveSessionModel(tab, session, "coding-claude")).toBe("coding-claude");
+  });
+
   it("detects channel-less retry messages", () => {
     expect(
       isNoChannelRetryMessage(
@@ -321,5 +350,100 @@ describe("resolveSessionModel ignores history served ids", () => {
     expect(isNoChannelRetryMessage("API error (HTTP 529); retrying (3/10) in 9.5s")).toBe(false);
     expect(isNoChannelRetryMessage("API error (HTTP 503); retrying (1/10) in 1.0s")).toBe(false);
     expect(isNoChannelRetryMessage("model_not_found")).toBe(true);
+  });
+});
+
+describe("engine-reported served id does not stick into send memory", () => {
+  beforeEach(() => {
+    localStorage.clear();
+    vi.clearAllMocks();
+    runRouting.clear();
+    useChatStore.setState({
+      openTabs: [{ engine: "omp", sessionId: SID, workspacePath: WS }],
+      active: { engine: "omp", sessionId: SID, workspacePath: WS },
+      unseen: {},
+      sessions: [],
+      models: { omp: "coding-claude" },
+      bySession: {
+        [KEY]: {
+          ...EMPTY_SESSION,
+          activeModel: "coding-claude",
+          messages: [
+            { seq: 1, role: "assistant", text: "", ts: null, live: true, model: "coding-claude" },
+          ],
+        },
+      },
+      streamingByKey: {},
+    });
+  });
+
+  it("model event with gateway rewrite updates live row only", () => {
+    handleEngineEvents(
+      [{ runId: "run-9", sessionId: SID, engine: "omp", seq: 1, kind: "model", data: "deepseek-flash" }],
+      deps(),
+    );
+    const session = useChatStore.getState().bySession[KEY]!;
+    expect(session.activeModel).toBe("coding-claude");
+    expect(session.messages.find((m) => m.live)?.model).toBe("deepseek-flash");
+    expect(vi.mocked(ipc.rememberSessionModel)).not.toHaveBeenCalled();
+  });
+
+  it("polluted activeModel heals on repeated served report and rewrites session_models", () => {
+    useChatStore.setState({
+      bySession: {
+        [KEY]: {
+          ...EMPTY_SESSION,
+          activeModel: "deepseek-flash",
+          messages: [
+            { seq: 1, role: "assistant", text: "", ts: null, live: true, model: "deepseek-flash" },
+          ],
+        },
+      },
+      models: { omp: "coding-claude" },
+      openTabs: [{ engine: "omp", sessionId: SID, workspacePath: WS }],
+    });
+
+    handleEngineEvents(
+      [{ runId: "run-9", sessionId: SID, engine: "omp", seq: 1, kind: "model", data: "deepseek-flash" }],
+      deps(),
+    );
+
+    expect(useChatStore.getState().bySession[KEY]!.activeModel).toBe("coding-claude");
+    expect(vi.mocked(ipc.rememberSessionModel)).toHaveBeenCalledWith(
+      "omp",
+      SID,
+      "coding-claude",
+    );
+  });
+
+  it("launch sticks requested model into activeModel", () => {
+    handleEngineEvents(
+      [
+        {
+          runId: "run-9",
+          sessionId: SID,
+          engine: "omp",
+          seq: 1,
+          kind: "launch",
+          data: { model: "coding-claude", effort: null },
+        },
+      ],
+      deps(),
+    );
+    expect(useChatStore.getState().bySession[KEY]!.activeModel).toBe("coding-claude");
+  });
+
+  it("polluted session resolves to config for the next --model (send path input)", () => {
+    // Full store.send hits Promise.withResolvers soft debt in this Node;
+    // assert the resolve input messaging uses before spawn/remember.
+    const tab = { engine: "omp", sessionId: SID, workspacePath: WS };
+    const session = {
+      ...EMPTY_SESSION,
+      activeModel: "deepseek-flash",
+      messages: [
+        { seq: 1, role: "assistant" as const, text: "ok", ts: null, model: "deepseek-flash" },
+      ],
+    };
+    expect(resolveSessionModel(tab, session, "coding-claude")).toBe("coding-claude");
   });
 });

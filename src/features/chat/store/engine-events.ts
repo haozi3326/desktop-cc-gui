@@ -547,8 +547,9 @@ export function upsertSessionMetaInto(
 }
 
 /** Rows and the ledger describe this turn, not the next picker selection.
- * activeModel is seeded on send and updated by engine reports; it may be a
- * concrete custom model while the tab deliberately keeps a family alias. */
+ * Prefer the live/pending display model when set; otherwise the send-memory
+ * activeModel / resolve path. Served rewrites may stamp the row without
+ * becoming next-send memory. */
 function stampedModel(
   deps: EngineEventDeps,
   engine: string,
@@ -556,6 +557,9 @@ function stampedModel(
 ): string | null {
   const s = deps.get();
   const session = s.bySession[key];
+  // Live assistant row already carries the served/display id for this turn.
+  const live = session?.messages?.find((m) => m.role === "assistant" && m.live);
+  if (live?.model) return live.model;
   if (session?.activeModel) return session.activeModel;
   const tab = s.openTabs.find(
     (t) => sessionKey(t.engine, t.sessionId, t.workspacePath) === key,
@@ -577,39 +581,91 @@ function stampedEffort(
   return resolveSessionEffort(tab, s.bySession[key], s.efforts[engine]) || null;
 }
 
-/** Apply an engine-reported model to the display (activeModel + live row). */
+/**
+ * Apply an engine-reported model to the *display* (live row + pending stream).
+ *
+ * `stickMemory` (launch / requested selection only): also write activeModel
+ * so the next `--model` follows what we asked for.
+ *
+ * Model/served reports must NOT promote a gateway rewrite (deepseek-flash)
+ * into activeModel / session_models — that sticks the next send on a
+ * channel-less id. Display and usage ledger still show the served id.
+ */
 function applyModelDisplay(
   reported: string,
   key: string,
   deps: EngineEventDeps,
+  opts?: { stickMemory?: boolean; engine?: string },
 ) {
+  const stickMemory = opts?.stickMemory === true;
+  const engine = opts?.engine;
+  const state = deps.get();
+  const current = state.bySession[key]?.activeModel ?? "";
   // The engine reports the bare model name; our own record spells it
   // "provider/model" (see ipc.rememberSessionModel). Same model, more
-  // context — keep the qualified one instead of dropping the provider.
-  const current = deps.get().bySession[key]?.activeModel ?? "";
-  const model =
-    current === reported || current.endsWith(`/${reported}`) ? current : reported;
-  updatePendingStreamModel(key, model);
+  // context — keep the qualified one for display when we already have it.
+  const sameAsMemory =
+    !!current && (current === reported || current.endsWith(`/${reported}`));
+  const displayModel = sameAsMemory ? current : reported;
+  updatePendingStreamModel(key, displayModel);
+
+  const engineDefault =
+    engine && state.models[engine] ? state.models[engine] : "";
+  // Polluted memory: activeModel already equals this served bare id and is
+  // not the user-configured default — fall back so the next send heals.
+  const healStickyServed =
+    !stickMemory &&
+    !!current &&
+    current === reported &&
+    !!engineDefault &&
+    current !== engineDefault &&
+    !engineDefault.endsWith(`/${current}`) &&
+    !current.includes("/");
+
+  let memoryModel: string | null | undefined = undefined;
+  if (stickMemory) {
+    memoryModel = sameAsMemory ? current : reported;
+  } else if (healStickyServed) {
+    memoryModel = engineDefault;
+  }
+
   deps.set((s) => {
     const cur = s.bySession[key];
     if (!cur) return {};
     let messages = cur.messages;
     if (messages.some((m) => m.role === "assistant" && m.live)) {
       messages = messages.map((m) =>
-        m.role === "assistant" && m.live ? { ...m, model } : m,
+        m.role === "assistant" && m.live
+          ? { ...m, model: displayModel }
+          : m,
       );
+    }
+    const next: typeof cur = {
+      ...cur,
+      messages,
+    };
+    if (memoryModel !== undefined) {
+      next.activeModel = memoryModel;
     }
     return {
       bySession: {
         ...s.bySession,
-        [key]: {
-          ...cur,
-          activeModel: model,
-          messages,
-        },
+        [key]: next,
       },
     };
   });
+
+  if (healStickyServed && memoryModel && engine) {
+    const tab = state.openTabs.find(
+      (t) => sessionKey(t.engine, t.sessionId, t.workspacePath) === key,
+    );
+    const sessionId = tab?.sessionId;
+    if (sessionId) {
+      void ipc
+        .rememberSessionModel?.(engine, sessionId, memoryModel)
+        ?.catch(() => {});
+    }
+  }
 }
 
 /** Apply an engine-reported effort to the display. */
@@ -655,7 +711,7 @@ function onLaunch(event: ChatEngineEvent, key: string, deps: EngineEventDeps) {
     data.comparisonModel === undefined
       ? {}
       : { comparisonModel: data.comparisonModel };
-  if (model) applyModelDisplay(model, key, deps);
+  if (model) applyModelDisplay(model, key, deps, { stickMemory: true, engine: event.engine });
   if (effort) applyEffortDisplay(effort, key, deps);
   deps.set((s) => {
     const cur = s.bySession[key];
@@ -2186,7 +2242,8 @@ export function handleEngineEvents(
         break;
       case "model": {
         const reported = typeof event.data === "string" ? event.data.trim() : "";
-        if (reported) applyModelDisplay(reported, key, deps);
+        // Served/rewrite id: display + ledger only — never next-send memory.
+        if (reported) applyModelDisplay(reported, key, deps, { engine: event.engine });
         break;
       }
       case "effort": {

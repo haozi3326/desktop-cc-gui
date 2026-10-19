@@ -106,14 +106,19 @@ export const EMPTY_SESSION: SessionState = {
 /** The model one session runs with, most specific first:
  *
  *  1. the tab's own pick (an explicit choice for this session),
- *  2. what the GUI remembered / engine reported for this session
- *     (`activeModel`, from session_models or a prior send),
+ *  2. what the GUI remembered for this session (`activeModel`, from
+ *     session_models or a prior *send* — never a gateway served rewrite),
  *  3. the engine default (CLI-opened chats, new chats, no GUI memory yet).
  *
  * History `message.model` is the *served* id (gateways may rewrite it to
  * something like deepseek-flash). That stamp stays on the row for meta, but
  * must NOT drive the next `--model` — otherwise a CLI session resumes stuck
  * on a channel-less flash and the CLI burns 10 retries.
+ *
+ * Self-heal: a bare `activeModel` that mismatches the configured engine
+ * default is treated as a sticky served rewrite (session_models pollution)
+ * and falls back to the default. Picker-qualified ids (`provider/model`)
+ * keep their slash and stay sticky across restarts.
  *
  * Per session on purpose: two omp sessions may run different models, so the
  * picker and send must read the session's choice.
@@ -125,8 +130,44 @@ export function resolveSessionModel(
 ): string | undefined {
   if (!tab) return engineDefault;
   if (tab.model) return tab.model;
-  if (session?.activeModel) return session.activeModel;
+  const remembered = session?.activeModel;
+  if (remembered) {
+    if (
+      engineDefault &&
+      isBareModelId(remembered) &&
+      !modelsEqualForMemory(remembered, engineDefault)
+    ) {
+      // Sticky served rewrite in session_models / activeModel (e.g.
+      // deepseek-flash): prefer user config. Only heal when memory mirrors a
+      // history served stamp, or history is not loaded yet (meta-only sticky).
+      // A bare id that does *not* appear on rows (e.g. coding-claude memory
+      // while rows show a rewrite) stays sticky.
+      const msgs = session?.messages;
+      const mirrorsServed =
+        !msgs?.length ||
+        msgs.some((m) => typeof m.model === "string" && m.model === remembered);
+      if (mirrorsServed) return engineDefault;
+    }
+    return remembered;
+  }
   return engineDefault;
+}
+
+/** Gateway served ids are bare; picker memory often keeps `provider/model`. */
+function isBareModelId(id: string): boolean {
+  return !id.includes("/");
+}
+
+/** Same model for send-memory purposes (qualified vs bare of the same id). */
+function modelsEqualForMemory(a: string, b: string): boolean {
+  if (a === b) return true;
+  if (a.endsWith(`/${b}`) || b.endsWith(`/${a}`)) return true;
+  const bare = (id: string) => {
+    const t = id.trim().toLowerCase();
+    const i = t.lastIndexOf("/");
+    return (i >= 0 ? t.slice(i + 1) : t).replace(/\[1m\]$/, "");
+  };
+  return bare(a) === bare(b);
 }
 
 /** True when a provider-retry / warn / error message means the model has no
