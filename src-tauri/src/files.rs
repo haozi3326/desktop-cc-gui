@@ -116,21 +116,39 @@ fn strip_verbatim_prefix(path: PathBuf) -> PathBuf {
     }
 }
 
-/// The directory a grant for `path` would cover: the path itself when it is
-/// a directory, otherwise its parent (granting a single file would not cover
-/// its siblings, which is never what the file-tree user wants).
-fn grant_dir_for(path: &str) -> Result<PathBuf, String> {
-    let resolved = canonicalize_lenient(Path::new(path.trim()))?;
-    let dir = if resolved.is_dir() {
-        resolved
-    } else {
-        resolved
+/// Walk `start` upward until an existing directory is found, then canonicalize
+/// it. Grant-only: `canonicalize_lenient` stays one-level for file I/O.
+fn first_existing_grant_dir(start: &Path) -> Result<PathBuf, String> {
+    let mut candidate = start;
+    while !candidate.as_os_str().is_empty() {
+        if candidate.is_dir() {
+            let resolved = std::fs::canonicalize(candidate)
+                .map_err(|e| format!("cannot resolve {}: {e}", candidate.display()))?;
+            return Ok(strip_verbatim_prefix(resolved));
+        }
+        candidate = candidate
             .parent()
             .filter(|p| !p.as_os_str().is_empty())
-            .ok_or_else(|| format!("cannot resolve {path}"))?
-            .to_path_buf()
-    };
-    Ok(strip_verbatim_prefix(dir))
+            .ok_or_else(|| format!("cannot resolve {}", start.display()))?;
+    }
+    Err(format!("cannot resolve {}", start.display()))
+}
+
+/// The directory a grant for `path` would cover: the path itself when it is
+/// a directory, otherwise its parent (granting a single file would not cover
+/// its siblings, which is never what the file-tree user wants). When nested
+/// parents are missing, walk up to the first existing directory.
+fn grant_dir_for(path: &str) -> Result<PathBuf, String> {
+    let trimmed = path.trim();
+    let path = Path::new(trimmed);
+    if path.is_dir() {
+        return first_existing_grant_dir(path);
+    }
+    let parent = path
+        .parent()
+        .filter(|p| !p.as_os_str().is_empty())
+        .ok_or_else(|| format!("cannot resolve {trimmed}"))?;
+    first_existing_grant_dir(parent)
 }
 
 /// Resolve the directory a `grant_root` call would cover — the confirm
@@ -665,6 +683,34 @@ mod tests {
         let outside = Scratch::new();
         let dir = grant_dir_for(&outside.0.to_string_lossy()).unwrap();
         let want = strip_verbatim_prefix(std::fs::canonicalize(&outside.0).unwrap());
+        assert_eq!(dir, want);
+    }
+
+    #[test]
+    fn grant_dir_for_walks_up_when_nested_parents_missing() {
+        let scratch = Scratch::new();
+        let claude = scratch.0.join(".claude");
+        std::fs::create_dir_all(&claude).unwrap();
+        let target = claude.join("rules").join("foo.md");
+        let dir = grant_dir_for(&target.to_string_lossy()).unwrap();
+        let want = strip_verbatim_prefix(std::fs::canonicalize(&claude).unwrap());
+        assert_eq!(dir, want);
+
+        let only_root = Scratch::new();
+        let target = only_root.0.join(".claude").join("rules").join("foo.md");
+        let dir = grant_dir_for(&target.to_string_lossy()).unwrap();
+        let want = strip_verbatim_prefix(std::fs::canonicalize(&only_root.0).unwrap());
+        assert_eq!(dir, want);
+    }
+
+    #[test]
+    fn grant_dir_for_one_level_missing_parent_still_grants_parent() {
+        let scratch = Scratch::new();
+        let parent = scratch.0.join("rules");
+        std::fs::create_dir_all(&parent).unwrap();
+        let target = parent.join("new-file.md");
+        let dir = grant_dir_for(&target.to_string_lossy()).unwrap();
+        let want = strip_verbatim_prefix(std::fs::canonicalize(&parent).unwrap());
         assert_eq!(dir, want);
     }
 
