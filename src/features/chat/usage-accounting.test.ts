@@ -115,7 +115,7 @@ describe("usage accounting", () => {
     expect(parseUsage(settled.usage)).toMatchObject({ input: 500, output: 10 });
   });
 
-  it("records Claude's resolved custom model instead of the selected family alias", () => {
+  it("ledgers the GUI-remembered send model, not a served rewrite echo", () => {
     const tab = { engine: "claude", sessionId: "s-1", workspacePath: "/tmp/ws", model: "haiku" };
     const key = sessionKey(tab.engine, tab.sessionId, tab.workspacePath);
     const model = "gpt-6-astra-cc-format[1m]";
@@ -134,11 +134,11 @@ describe("usage accounting", () => {
     ], deps());
 
     expect(ipc.usageRecord).toHaveBeenCalledWith(expect.objectContaining({
-      engine: "claude", model, input: 7, output: 3, reports: 1,
+      engine: "claude", model: tab.model, input: 7, output: 3, reports: 1,
     }));
     expect(ipc.usageRecord).toHaveBeenCalledTimes(1);
     expect(useChatStore.getState().bySession[key]!.messages.at(-1)).toMatchObject({
-      role: "assistant", text: "Custom model reply", model, live: false,
+      role: "assistant", text: "Custom model reply", model: tab.model, live: false,
     });
     // Keep the selector for the next send: aliases must still follow channel remaps.
     expect(useChatStore.getState().openTabs[0].model).toBe("haiku");

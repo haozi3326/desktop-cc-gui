@@ -274,8 +274,8 @@ describe("ordered tool batches", () => {
     const session = store.getState().bySession[KEY];
     expect(session.retry).toBeNull();
     expect(session.messages.map((message) => message.text)).toEqual(["Read", "Write", "new text", "Read", "snapshot", "Write"]);
-    expect(session.messages[2].model).toBe("new-model");
-    expect(session.messages[4].model).toBe("new-model");
+    expect(session.messages[2].model).toBeNull();
+    expect(session.messages[4].model).toBeNull();
   });
 
   it("flushes tools before pending-session migration and routes subsequent patches", () => {

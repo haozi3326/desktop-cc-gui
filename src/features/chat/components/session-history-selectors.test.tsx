@@ -145,15 +145,15 @@ describe("session history selector isolation", () => {
     const plan: Message = { seq: 3, role: "plan_review", text: "plan", ts: null, planReview: planReview("awaiting_review") };
     const history = [{ seq: 1, role: "assistant", text: "reply", ts: null, model: "history-model", effort: "low" }, question, plan];
     patch(KEY, { messages: history });
-    expect(shown()).toEqual({ model: "history-model", effort: "low", question: 2, plan: 3, gate: true });
+    expect(shown()).toEqual({ model: "default-model", effort: "low", question: 2, plan: 3, gate: true });
 
     patch(KEY, { activeModel: "reported-model", activeEffort: "high" });
     expect(shown()).toMatchObject({ model: "reported-model", effort: "high" });
     patch(KEY, { activeModel: null, activeEffort: null });
-    expect(shown()).toMatchObject({ model: "history-model", effort: "low" });
+    expect(shown()).toMatchObject({ model: "default-model", effort: "low" });
 
     patch(KEY, { messages: [history[0], questionMessage(2, "answered"), { ...plan, planReview: planReview("approved") }] });
-    expect(shown()).toEqual({ model: "history-model", effort: "low", question: null, plan: null, gate: false });
+    expect(shown()).toEqual({ model: "default-model", effort: "low", question: null, plan: null, gate: false });
   });
 
   it("invalidates approval results when resume or streaming changes without replacing history", () => {
@@ -174,7 +174,11 @@ describe("session history selector isolation", () => {
   });
 
   it("switches session history and honors a split pane's own session", () => {
-    patch(OTHER_KEY, { messages: [{ ...questionMessage(7, "pending"), model: "other-model", effort: "high" }] });
+    patch(OTHER_KEY, {
+      messages: [questionMessage(7, "pending")],
+      activeModel: "other-model",
+      activeEffort: "high",
+    });
     act(() => root.render(<Probe />));
     expect(shown()).toMatchObject({ model: "default-model", question: null });
     act(() => useChatStore.setState({ active: OTHER }));

@@ -153,7 +153,7 @@ describe("the response check's engine wiring", () => {
       deps(),
     );
 
-    expect(session().activeModel).toBe("glm-5.3");
+    expect(session().activeModel).toBe("claude-opus-5-5");
     expect(session().activeEffort).toBe("low");
     expect(session().responseCheck).toEqual({
       requested: { model: "claude-opus-5-5", effort: "xhigh" },
