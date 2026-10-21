@@ -369,6 +369,51 @@ export function settleLiveRows(messages: Message[]): Message[] {
   return messages.map((m) => (m.live ? { ...m, live: false } : m));
 }
 
+/** Fold a full assistant transcript snapshot into the timeline without
+ * duplicating text that already streamed via deltas. */
+export function mergeAssistantSnapshot(
+  messages: Message[],
+  text: string,
+  meta: Pick<Message, "model" | "effort" | "durationMs" | "ts">,
+): Message[] {
+  const settled = settleLiveRows(messages);
+  const trimmed = text.trim();
+  if (!trimmed) return settled;
+
+  for (let i = settled.length - 1; i >= 0; i--) {
+    const row = settled[i];
+    if (row.role === "user") break;
+    if (row.role === "tool" || row.role === "thinking") continue;
+    if (row.role !== "assistant") continue;
+    const prev = row.text.trim();
+    if (prev === trimmed) return settled;
+    if (!prev || trimmed.startsWith(prev) || prev.startsWith(trimmed)) {
+      const merged =
+        !prev || trimmed.length >= prev.length ? text : row.text;
+      return [
+        ...settled.slice(0, i),
+        { ...row, ...meta, text: merged },
+        ...settled.slice(i + 1),
+      ];
+    }
+    break;
+  }
+
+  const seq = settled.length ? settled[settled.length - 1].seq + 1 : 1;
+  return [
+    ...settled,
+    {
+      role: "assistant",
+      text,
+      seq,
+      ts: meta.ts ?? null,
+      model: meta.model ?? null,
+      effort: meta.effort ?? null,
+      durationMs: meta.durationMs ?? null,
+    },
+  ];
+}
+
 export function bufferStreamPart(
   key: string,
   kind: StreamPart["kind"],

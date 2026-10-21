@@ -2153,6 +2153,47 @@ mod tests {
     }
 
     #[test]
+    fn claude_split_assistant_lines_replay_confirmation_checklist() {
+        let thinking: Value = serde_json::json!({
+            "type": "assistant",
+            "isSidechain": false,
+            "timestamp": "2026-10-21T10:39:14.461Z",
+            "message": {
+                "role": "assistant",
+                "content": [{"type": "thinking", "thinking": "出确认清单"}]
+            }
+        });
+        let checklist: Value = serde_json::json!({
+            "type": "assistant",
+            "isSidechain": false,
+            "timestamp": "2026-10-21T10:39:25.935Z",
+            "message": {
+                "role": "assistant",
+                "content": [{
+                    "type": "text",
+                    "text": "7 条 Bug 的**问题确认清单**\n\n**① 25556【性能】** —— 要改\n**⑦ 25569** —— 不改代码"
+                }]
+            }
+        });
+        let input = format!(
+            "{}\n{}\n",
+            thinking.to_string(),
+            checklist.to_string()
+        );
+        let extractor: LineExtractor<'_> =
+            Box::new(|value: &Value| extract_claude_line(value, ImageMode::Collect));
+        let parsed = collect_session(std::io::Cursor::new(input), &extractor, &HashSet::new());
+        let checklist_rows = parsed
+            .messages
+            .iter()
+            .filter(|m| m.role == "assistant" && m.text.contains("问题确认清单"))
+            .collect::<Vec<_>>();
+        assert_eq!(checklist_rows.len(), 1);
+        assert!(checklist_rows[0].text.contains("①"));
+        assert!(checklist_rows[0].text.contains("⑦"));
+    }
+
+    #[test]
     fn claude_line_extracts_thinking_and_tool_in_order() {
         let line: Value = serde_json::json!({
             "type": "assistant",

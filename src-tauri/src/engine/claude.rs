@@ -344,6 +344,15 @@ impl Engine for ClaudeEngine {
                         effort: reported_effort,
                     });
                 }
+                // Some providers buffer the final answer into the transcript
+                // assistant record without streaming `text_delta` events (long
+                // plan/checklist replies are a common case). Surface text
+                // blocks as assistant snapshots so live settle matches jsonl.
+                if let Some(message) = value.get("message") {
+                    if let Some(text) = claude_assistant_snapshot_text(message) {
+                        out.push(super::assistant_message(text));
+                    }
+                }
             }
             "user" => {
                 // tool_result blocks carry permission denials as is_error
@@ -740,6 +749,31 @@ fn format_api_retry(value: &Value) -> String {
     msg
 }
 
+/// Plain assistant text from a Claude Code `type: assistant` transcript line.
+fn claude_assistant_snapshot_text(message: &Value) -> Option<String> {
+    let content = message.get("content")?;
+    let mut text = String::new();
+    match content {
+        Value::Array(blocks) => {
+            for block in blocks {
+                if block.get("type").and_then(Value::as_str) != Some("text") {
+                    continue;
+                }
+                if let Some(part) = block.get("text").and_then(Value::as_str) {
+                    text.push_str(part);
+                }
+            }
+        }
+        Value::String(s) => text.push_str(s),
+        _ => return None,
+    }
+    if text.trim().is_empty() {
+        None
+    } else {
+        Some(text)
+    }
+}
+
 /// Anthropic SSE wrapped events (requires --include-partial-messages).
 fn parse_stream_event(
     pending: &Mutex<HashMap<u64, PendingTool>>,
@@ -1005,6 +1039,33 @@ mod tests {
             out.iter().any(|e| matches!(
                 e,
                 EngineEvent::Served { model: Some(_), effort: Some(effort) } if effort == "max"
+            )),
+            "got {out:?}"
+        );
+    }
+
+    #[test]
+    fn assistant_transcript_line_emits_text_snapshot() {
+        let checklist = "问题确认清单\n\n**① 25556【性能】资源导入 19 条用了 8 秒**";
+        let line = serde_json::json!({
+            "type": "assistant",
+            "session_id": "s-1",
+            "message": {
+                "role": "assistant",
+                "model": "glm-5.3-flash",
+                "content": [
+                    {"type": "thinking", "thinking": "plan"},
+                    {"type": "text", "text": checklist}
+                ]
+            }
+        })
+        .to_string();
+        let mut out = Vec::new();
+        ClaudeEngine::new().parse_line(&line, &mut out);
+        assert!(
+            out.iter().any(|e| matches!(
+                e,
+                EngineEvent::Message { role, text, .. } if role == "assistant" && text.contains("问题确认清单")
             )),
             "got {out:?}"
         );

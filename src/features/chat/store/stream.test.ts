@@ -1,6 +1,13 @@
 import { describe, expect, it } from "vitest";
 import type { Message } from "@/lib/ipc";
-import { appendToolMessage, applyStreamParts, settleLiveRows, EMPTY_SESSION, type BySessionSlice } from "./stream";
+import {
+  appendToolMessage,
+  applyStreamParts,
+  mergeAssistantSnapshot,
+  settleLiveRows,
+  EMPTY_SESSION,
+  type BySessionSlice,
+} from "./stream";
 
 function harness() {
   let state: BySessionSlice = { bySession: { k: { ...EMPTY_SESSION, messages: [] } } };
@@ -91,5 +98,55 @@ describe("applyStreamParts / settleLiveRows contract", () => {
   it("settleLiveRows clears every live flag", () => {
     const result = applyStreamParts([], [{ kind: "delta", text: "hello" }], null);
     expect(settleLiveRows(result).every((m) => !m.live)).toBe(true);
+  });
+});
+
+describe("mergeAssistantSnapshot", () => {
+  const checklist =
+    "7 条 Bug 的**问题确认清单**\n\n**① 25556【性能】** —— 要改\n**⑦ 25569** —— 不改代码";
+
+  it("appends a transcript snapshot when the turn only streamed thinking", () => {
+    const base: Message[] = [
+      { seq: 1, role: "user", text: "看下禅道", ts: null },
+      { seq: 2, role: "thinking", text: "出确认清单", ts: null },
+    ];
+    const merged = mergeAssistantSnapshot(base, checklist, {
+      ts: "2026-10-21T10:39:25.935Z",
+      model: "glm-5.3-flash",
+      effort: "high",
+      durationMs: 1200,
+    });
+    expect(merged).toHaveLength(3);
+    expect(merged[2]).toMatchObject({
+      role: "assistant",
+      text: checklist,
+      model: "glm-5.3-flash",
+    });
+  });
+
+  it("extends a partial live assistant row instead of duplicating", () => {
+    const base: Message[] = [
+      { seq: 1, role: "assistant", text: "7 条 Bug 的", live: true, ts: null },
+    ];
+    const merged = mergeAssistantSnapshot(base, checklist, {
+      ts: null,
+      model: null,
+      effort: null,
+      durationMs: null,
+    });
+    expect(merged).toHaveLength(1);
+    expect(merged[0].text).toBe(checklist);
+    expect(merged[0].live).toBe(false);
+  });
+
+  it("ignores an exact duplicate snapshot", () => {
+    const base: Message[] = [{ seq: 1, role: "assistant", text: checklist, ts: null }];
+    const merged = mergeAssistantSnapshot(base, checklist, {
+      ts: null,
+      model: null,
+      effort: null,
+      durationMs: null,
+    });
+    expect(merged).toBe(base);
   });
 });

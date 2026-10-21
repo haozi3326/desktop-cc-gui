@@ -29,6 +29,7 @@ import {
   scheduleDeltaFlush,
   setRetryingFlag,
   setStreamingFlag,
+  mergeAssistantSnapshot,
   settleLiveRows,
   touchRun,
   untrackRun,
@@ -831,37 +832,19 @@ function onMessage(
   // contained only an accepted internal frame.
   deps.set((s) => {
     const prev = s.bySession[key] ?? EMPTY_SESSION;
-    const settled = settleLiveRows(prev.messages);
-    if (!text) {
-      return {
-        bySession: {
-          ...s.bySession,
-          [key]: { ...prev, messages: settled },
-        },
-      };
-    }
-    const seq = settled.length ? settled[settled.length - 1].seq + 1 : 1;
     const durationMs = prev.turnStartedAt
       ? Math.max(0, Date.now() - prev.turnStartedAt)
       : null;
+    const messages = mergeAssistantSnapshot(prev.messages, text, {
+      ts: new Date().toISOString(),
+      model: stampedModel(deps, event.engine, key),
+      effort: stampedEffort(deps, event.engine, key),
+      durationMs,
+    });
     return {
       bySession: {
         ...s.bySession,
-        [key]: {
-          ...prev,
-          messages: [
-            ...settled,
-            {
-              role: "assistant",
-              text,
-              ts: new Date().toISOString(),
-              model: stampedModel(deps, event.engine, key),
-              effort: stampedEffort(deps, event.engine, key),
-              durationMs,
-              seq,
-            },
-          ],
-        },
+        [key]: { ...prev, messages },
       },
     };
   });
