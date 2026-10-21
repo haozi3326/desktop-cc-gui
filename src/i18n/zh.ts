@@ -71,6 +71,8 @@ export const zh = {
     focusWorkspaceTabs: "跳到 {{name}} 的页签",
     closeAllTabs: "全部关闭",
     closeInactiveTabs: "关闭非活跃窗口",
+    closeLeftTabs: "关闭左侧标签页",
+    closeRightTabs: "关闭右侧标签页",
     collapseSidebar: "收起侧边栏",
     expandSidebar: "展开侧边栏",
     resizeSidebar: "拖拽调整侧边栏宽度",
