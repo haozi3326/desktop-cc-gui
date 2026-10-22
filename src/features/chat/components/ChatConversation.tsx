@@ -21,6 +21,7 @@ import {
 } from "../store";
 
 import { MessageTimeline } from "./MessageTimeline";
+import { engineFromSessionKey } from "../turn-end-status";
 import { ConversationFooter } from "./ConversationFooter";
 import { useComposerActions } from "./use-composer-actions";
 import { filterEngineOptions, orderEngineOptions } from "./engine-options";
@@ -63,6 +64,7 @@ const SessionTimeline = memo(function SessionTimeline({
       key={key}
       session={session}
       streaming={session.streaming}
+      engine={engineFromSessionKey(key)}
       onLoadEarlier={onLoadEarlier}
       workspacePath={workspacePath}
     />

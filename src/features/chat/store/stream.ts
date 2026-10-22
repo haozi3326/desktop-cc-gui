@@ -76,8 +76,8 @@ export interface SessionState {
    *  (`"${planId}:${revision}"`): the approval dock mounts for it again.
    *  Pure UI state — the backend record stays `deferred` either way. */
   planReviewResume: string | null;
-  /** After a turn settles: timeline shows 「已结束」 (and an incomplete tip
-   *  when the last assistant text looks stubby) until the next send. */
+  /** After a turn settles: timeline shows 「已结束」 and any parallel hard
+   *  states (background subagents, confirmation docks) until the next send. */
   turnEndStatus: TurnEndStatus | null;
 }
 

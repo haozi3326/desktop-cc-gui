@@ -1,9 +1,21 @@
 import type { Message } from "@/lib/ipc";
+import { hasPendingUserInput } from "./auto-compact-context";
+import { deriveAgentTaskSteps } from "./components/agent-task-steps";
+import { parseDraftSessionKey } from "./store/persistence";
 
 /** Post-settle strip: clear 「响应中」, show 「已结束」 (+ optional incomplete tip). */
 export interface TurnEndStatus {
   at: number;
   possiblyIncomplete: boolean;
+  /** Subagents still running after the parent turn settled. */
+  backgroundRunning: boolean;
+  /** Question / grant / plan review still waiting on the user. */
+  awaitingConfirmation: boolean;
+}
+
+export interface TurnEndHardState {
+  backgroundRunning: boolean;
+  awaitingConfirmation: boolean;
 }
 
 /**
@@ -29,9 +41,59 @@ export function lastAssistantText(messages: Message[]): string {
   return "";
 }
 
-export function buildTurnEndStatus(messages: Message[], at = Date.now()): TurnEndStatus {
+/** Engine id from a `sessionKey` route (`engine/id` or `new:engine:path`). */
+export function engineFromSessionKey(key: string): string {
+  const draft = parseDraftSessionKey(key);
+  if (draft) return draft.engine;
+  const slash = key.indexOf("/");
+  return slash > 0 ? key.slice(0, slash) : "";
+}
+
+/** Live hard-state flags while a turn is settled (!streaming) but work or a
+ *  dialog is still outstanding. Recomputed from messages so hub snapshots and
+ *  answered questions converge without another settle event. */
+export function deriveTurnEndHardState(input: {
+  messages: Message[];
+  subagentHistory?: Message[];
+  engine: string;
+}): TurnEndHardState {
+  const history = input.subagentHistory?.length
+    ? [...input.subagentHistory, ...input.messages]
+    : input.messages;
+  const awaitingConfirmation = hasPendingUserInput(input.messages);
+  const steps = deriveAgentTaskSteps(history, false, input.engine);
+  const backgroundRunning = steps.some((step) => step.state === "active");
+  return { backgroundRunning, awaitingConfirmation };
+}
+
+export function turnEndHardStateActive(hard: TurnEndHardState): boolean {
+  return hard.backgroundRunning || hard.awaitingConfirmation;
+}
+
+export interface BuildTurnEndStatusOptions {
+  subagentHistory?: Message[];
+  engine?: string;
+}
+
+export function buildTurnEndStatus(
+  messages: Message[],
+  at = Date.now(),
+  options?: BuildTurnEndStatusOptions,
+): TurnEndStatus {
+  const hard =
+    options?.engine != null && options.engine !== ""
+      ? deriveTurnEndHardState({
+          messages,
+          subagentHistory: options.subagentHistory,
+          engine: options.engine,
+        })
+      : {
+          backgroundRunning: false,
+          awaitingConfirmation: hasPendingUserInput(messages),
+        };
   return {
     at,
     possiblyIncomplete: assistantTextLooksPossiblyIncomplete(lastAssistantText(messages)),
+    ...hard,
   };
 }

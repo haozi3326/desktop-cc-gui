@@ -68,7 +68,7 @@ describe("timeline search within bounded process history", () => {
     }));
     if (extraMatches) messages.unshift({ seq: 0, role: "user", text: "目标🙂", ts: null });
     await act(async () => {
-      root.render(<MessageTimeline session={{ ...EMPTY_SESSION, messages }} streaming={false} onLoadEarlier={() => {}} workspacePath="/ws" />);
+      root.render(<MessageTimeline session={{ ...EMPTY_SESSION, messages }} streaming={false} engine="omp" onLoadEarlier={() => {}} workspacePath="/ws" />);
     });
   }
 
@@ -348,6 +348,7 @@ describe("settled response check record", () => {
         <MessageTimeline
           session={{ ...EMPTY_SESSION, messages }}
           streaming={false}
+          engine="omp"
           onLoadEarlier={() => {}}
           workspacePath="/ws"
         />,
@@ -501,6 +502,7 @@ describe("host compaction rows", () => {
         <MessageTimeline
           session={{ ...EMPTY_SESSION, messages, compaction }}
           streaming={streaming}
+          engine="omp"
           onLoadEarlier={() => {}}
           workspacePath="/ws"
         />,
@@ -587,6 +589,7 @@ describe("chat column width (宽幕布)", () => {
             messages: [{ seq: 1, role: "user", text: "hi", ts: null }],
           }}
           streaming={false}
+          engine="omp"
           onLoadEarlier={() => {}}
           workspacePath="/ws"
         />,
@@ -741,6 +744,7 @@ describe("waiting vs settled A+C status rail", () => {
         <MessageTimeline
           session={{ ...EMPTY_SESSION, messages: [{ seq: 1, role: "user", text: "hi", ts: null }] }}
           streaming
+          engine="omp"
           onLoadEarlier={() => {}}
           workspacePath="/ws"
         />,
@@ -762,9 +766,15 @@ describe("waiting vs settled A+C status rail", () => {
           session={{
             ...EMPTY_SESSION,
             messages,
-            turnEndStatus: { at: 1, possiblyIncomplete: false },
+            turnEndStatus: {
+              at: 1,
+              possiblyIncomplete: false,
+              backgroundRunning: false,
+              awaitingConfirmation: false,
+            },
           }}
           streaming={false}
+          engine="omp"
           onLoadEarlier={() => {}}
           workspacePath="/ws"
         />,
@@ -791,9 +801,15 @@ describe("waiting vs settled A+C status rail", () => {
               { seq: 1, role: "user", text: "hi", ts: null },
               { seq: 2, role: "assistant", text: "回代码取原", ts: null },
             ],
-            turnEndStatus: { at: 1, possiblyIncomplete: true },
+            turnEndStatus: {
+              at: 1,
+              possiblyIncomplete: true,
+              backgroundRunning: false,
+              awaitingConfirmation: false,
+            },
           }}
           streaming={false}
+          engine="omp"
           onLoadEarlier={() => {}}
           workspacePath="/ws"
         />,
@@ -802,5 +818,87 @@ describe("waiting vs settled A+C status rail", () => {
     const hint = container.querySelector('[data-testid="turn-incomplete-hint"]');
     expect(hint?.textContent).toBe("回复可能不完整，可再发继续");
     expect(container.querySelector('[data-testid="turn-end-status"]')?.textContent).toContain("已结束");
+  });
+
+  it("shows hard state for background subagents after settle, not only 已结束", async () => {
+    const messages: Message[] = [
+      { seq: 1, role: "user", text: "go", ts: null },
+      { seq: 2, role: "assistant", text: "Dispatching workers in the background.", ts: null },
+      {
+        seq: 3,
+        role: "tool",
+        text: "task · Dispatch",
+        ts: null,
+        args: {
+          tasks: [
+            { agent: "task", name: "WorkerA", task: "do A" },
+            { agent: "task", name: "WorkerB", task: "do B" },
+          ],
+        },
+      },
+    ];
+    await act(async () => {
+      root.render(
+        <MessageTimeline
+          session={{
+            ...EMPTY_SESSION,
+            messages,
+            turnEndStatus: {
+              at: 1,
+              possiblyIncomplete: false,
+              backgroundRunning: true,
+              awaitingConfirmation: false,
+            },
+          }}
+          streaming={false}
+          engine="omp"
+          onLoadEarlier={() => {}}
+          workspacePath="/ws"
+        />,
+      );
+    });
+    expect(container.querySelector('[data-testid="turn-hard-background"]')?.textContent).toContain(
+      "后台进行中",
+    );
+    expect(container.querySelector('[data-testid="turn-ended-check"]')).not.toBeNull();
+  });
+
+  it("shows 等你确认 when a grant card is still pending after settle", async () => {
+    const messages: Message[] = [
+      { seq: 1, role: "user", text: "hi", ts: null },
+      { seq: 2, role: "assistant", text: "Need your approval.", ts: null },
+      {
+        seq: 3,
+        role: "grant",
+        text: "",
+        ts: null,
+        path: "/ws",
+        grant: { status: "pending", dir: "/ws" },
+      },
+    ];
+    await act(async () => {
+      root.render(
+        <MessageTimeline
+          session={{
+            ...EMPTY_SESSION,
+            messages,
+            turnEndStatus: {
+              at: 1,
+              possiblyIncomplete: false,
+              backgroundRunning: false,
+              awaitingConfirmation: true,
+            },
+          }}
+          streaming={false}
+          engine="omp"
+          onLoadEarlier={() => {}}
+          workspacePath="/ws"
+        />,
+      );
+    });
+    expect(container.querySelector('[data-testid="turn-hard-confirmation"]')?.textContent).toContain(
+      "等你确认",
+    );
+    expect(container.querySelector('[data-testid="turn-ended-check"]')).not.toBeNull();
   });
 });

@@ -273,6 +273,36 @@ describe("RunStatusStrip", () => {
     expect(container.querySelector("[aria-label='展开运行状态']")).not.toBeNull();
   });
 
+  it("shows hard-state labels in the footer when subagents still run after settle", async () => {
+    const messages: Message[] = [
+      msg(1, "user", "go"),
+      {
+        ...msg(2, "tool", "task · Dispatch"),
+        args: { tasks: [{ agent: "task", name: "WorkerA", task: "work" }] },
+      },
+    ];
+    useChatStore.setState({
+      bySession: {
+        [KEY]: {
+          messages,
+          streaming: false,
+          turnEndStatus: {
+            at: 1,
+            possiblyIncomplete: false,
+            backgroundRunning: true,
+            awaitingConfirmation: false,
+          },
+        } as never,
+      },
+    });
+    await act(async () => {
+      root.render(<RunStatusStrip sessionKey={KEY} engine="omp" workspacePath={WS} />);
+    });
+    expect(
+      container.querySelector("[data-testid='run-status-hard-background']")?.textContent,
+    ).toContain("后台进行中");
+  });
+
   it("freezes counts and shows 已完成 once the turn settles", async () => {
     seed(TURN, true);
     await renderStrip();

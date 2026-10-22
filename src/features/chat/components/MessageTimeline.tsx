@@ -46,6 +46,8 @@ import {
   rowSearchText,
   searchHighlightSupported,
 } from "./timeline-search";
+import { deriveTurnEndHardState, turnEndHardStateActive } from "../turn-end-status";
+import { BreathingDot } from "./RunStatusStrip";
 
 const TimelineRowView = memo(function TimelineRowView({
   row,
@@ -553,11 +555,13 @@ function useTimelineSearch({
 export const MessageTimeline = memo(function MessageTimeline({
   session,
   streaming,
+  engine,
   onLoadEarlier,
   workspacePath,
 }: {
   session: SessionState;
   streaming: boolean;
+  engine: string;
   onLoadEarlier: () => void;
   workspacePath: string;
 }) {
@@ -604,6 +608,15 @@ export const MessageTimeline = memo(function MessageTimeline({
   // A compaction keeps it mounted even between sends, so the line does not
   // blink out in the gap between the compact turn and the resume turn.
   const showTurnEnd = Boolean(session.turnEndStatus) && !streaming && !session.compaction;
+  const turnHardState = useMemo(() => {
+    if (!showTurnEnd) return null;
+    const hard = deriveTurnEndHardState({
+      messages: session.messages,
+      subagentHistory: session.subagentHistory,
+      engine,
+    });
+    return turnEndHardStateActive(hard) ? hard : null;
+  }, [showTurnEnd, session.messages, session.subagentHistory, engine]);
   const count = rows.length + (streaming || session.compaction || showTurnEnd ? 1 : 0);
 
   const virtualizer = useVirtualizer({
@@ -793,11 +806,42 @@ export const MessageTimeline = memo(function MessageTimeline({
                     </div>
                   ) : session.turnEndStatus ? (
                     <div
-                      className="flex flex-col gap-0.5 py-2"
+                      className="flex flex-col gap-1 py-2"
                       data-testid="turn-end-status"
                       data-state="settled"
                       role="status"
                     >
+                      {turnHardState?.backgroundRunning ? (
+                        <div
+                          className="flex items-stretch gap-2.5"
+                          data-testid="turn-hard-background"
+                          data-state="background-running"
+                        >
+                          <span
+                            aria-hidden
+                            className="w-0.5 shrink-0 self-stretch rounded-full bg-[var(--color-status-streaming)]"
+                          />
+                          <span className="flex items-center gap-1.5 text-caption-1-medium text-text-secondary">
+                            <BreathingDot />
+                            {t("chat.turnBackgroundRunning")}
+                          </span>
+                        </div>
+                      ) : null}
+                      {turnHardState?.awaitingConfirmation ? (
+                        <div
+                          className="flex items-stretch gap-2.5"
+                          data-testid="turn-hard-confirmation"
+                          data-state="awaiting-confirmation"
+                        >
+                          <span
+                            aria-hidden
+                            className="w-0.5 shrink-0 self-stretch rounded-full bg-[var(--color-status-unseen)]"
+                          />
+                          <span className="flex items-center gap-1.5 text-caption-1-medium text-text-secondary">
+                            {t("chat.turnAwaitingConfirmation")}
+                          </span>
+                        </div>
+                      ) : null}
                       <div className="flex items-stretch gap-2.5">
                         <span
                           aria-hidden

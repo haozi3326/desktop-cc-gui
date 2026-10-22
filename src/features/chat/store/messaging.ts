@@ -26,7 +26,7 @@ import {
   settleLiveRows,
   untrackRun,
 } from "./stream";
-import { buildTurnEndStatus } from "../turn-end-status";
+import { buildTurnEndStatus, engineFromSessionKey } from "../turn-end-status";
 import { mergeUsage, parseUsage } from "../usage";
 import {
   bindRunLifecycle,
@@ -682,7 +682,10 @@ export function createMessagingActions(
             interrupted: true,
             turnStartedAt: null,
             retry: null,
-            turnEndStatus: buildTurnEndStatus(messages),
+            turnEndStatus: buildTurnEndStatus(messages, Date.now(), {
+              subagentHistory: cur.subagentHistory,
+              engine: engineFromSessionKey(key),
+            }),
           },
         },
         streamingByKey: setStreamingFlag(s.streamingByKey, key, false),
