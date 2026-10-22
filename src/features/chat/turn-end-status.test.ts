@@ -8,6 +8,29 @@ import {
 } from "./turn-end-status";
 import type { Message } from "@/lib/ipc";
 
+function questionRow(status: "pending" | "answered"): Message {
+  return {
+    seq: 1,
+    role: "question",
+    text: "Pick one",
+    ts: null,
+    question: {
+      requestId: "req-1",
+      runId: "run-1",
+      toolUseId: null,
+      questions: [
+        {
+          question: "Pick one",
+          header: "Choice",
+          multiSelect: false,
+          options: [{ label: "A", description: "Option A" }],
+        },
+      ],
+      status,
+    },
+  };
+}
+
 describe("assistantTextLooksPossiblyIncomplete", () => {
   it("flags empty and stub replies like 回代码取原", () => {
     expect(assistantTextLooksPossiblyIncomplete("")).toBe(true);
@@ -53,13 +76,7 @@ describe("buildTurnEndStatus", () => {
         ts: null,
         args: { tasks: [{ agent: "task", name: "WorkerA", task: "x" }] },
       },
-      {
-        seq: 4,
-        role: "question",
-        text: "",
-        ts: null,
-        question: { status: "pending", requestId: "q1", prompt: "?", options: [] },
-      },
+      { ...questionRow("pending"), seq: 4 },
     ] as Message[];
     expect(
       buildTurnEndStatus(messages, 2, { engine: "omp" }),
@@ -73,24 +90,8 @@ describe("buildTurnEndStatus", () => {
 
 describe("deriveTurnEndHardState", () => {
   it("clears awaiting confirmation when the question is answered", () => {
-    const pending = [
-      {
-        seq: 1,
-        role: "question",
-        text: "",
-        ts: null,
-        question: { status: "pending", requestId: "q1", prompt: "?", options: [] },
-      },
-    ] as Message[];
-    const answered = [
-      {
-        seq: 1,
-        role: "question",
-        text: "",
-        ts: null,
-        question: { status: "answered", requestId: "q1", prompt: "?", options: [] },
-      },
-    ] as Message[];
+    const pending = [questionRow("pending")] as Message[];
+    const answered = [questionRow("answered")] as Message[];
     expect(deriveTurnEndHardState({ messages: pending, engine: "omp" }).awaitingConfirmation).toBe(
       true,
     );
