@@ -276,6 +276,8 @@ export const en: Messages = {
     selectSession: "Select or start a session",
     thinking: "Responding",
     turnEnded: "Ended",
+    turnBackgroundRunning: "Running in background",
+    turnAwaitingConfirmation: "Waiting for you",
     possiblyIncomplete: "Reply may be incomplete — send again to continue",
     retrying: "Retrying {{attempt}}/{{max}}",
     retryingNoMax: "Retrying {{attempt}}",

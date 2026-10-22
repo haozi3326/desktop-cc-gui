@@ -2,9 +2,34 @@ import { describe, expect, it } from "vitest";
 import {
   assistantTextLooksPossiblyIncomplete,
   buildTurnEndStatus,
+  deriveTurnEndHardState,
+  engineFromSessionKey,
   lastAssistantText,
 } from "./turn-end-status";
 import type { Message } from "@/lib/ipc";
+
+function questionRow(status: "pending" | "answered"): Message {
+  return {
+    seq: 1,
+    role: "question",
+    text: "Pick one",
+    ts: null,
+    question: {
+      requestId: "req-1",
+      runId: "run-1",
+      toolUseId: null,
+      questions: [
+        {
+          question: "Pick one",
+          header: "Choice",
+          multiSelect: false,
+          options: [{ label: "A", description: "Option A" }],
+        },
+      ],
+      status,
+    },
+  };
+}
 
 describe("assistantTextLooksPossiblyIncomplete", () => {
   it("flags empty and stub replies like 回代码取原", () => {
@@ -35,6 +60,50 @@ describe("buildTurnEndStatus", () => {
     expect(buildTurnEndStatus(messages, 1)).toEqual({
       at: 1,
       possiblyIncomplete: true,
+      backgroundRunning: false,
+      awaitingConfirmation: false,
     });
+  });
+
+  it("records background subagents and pending questions at settle", () => {
+    const messages = [
+      { seq: 1, role: "user", text: "go", ts: null },
+      { seq: 2, role: "assistant", text: "ok", ts: null },
+      {
+        seq: 3,
+        role: "tool",
+        text: "task",
+        ts: null,
+        args: { tasks: [{ agent: "task", name: "WorkerA", task: "x" }] },
+      },
+      { ...questionRow("pending"), seq: 4 },
+    ] as Message[];
+    expect(
+      buildTurnEndStatus(messages, 2, { engine: "omp" }),
+    ).toMatchObject({
+      at: 2,
+      backgroundRunning: true,
+      awaitingConfirmation: true,
+    });
+  });
+});
+
+describe("deriveTurnEndHardState", () => {
+  it("clears awaiting confirmation when the question is answered", () => {
+    const pending = [questionRow("pending")] as Message[];
+    const answered = [questionRow("answered")] as Message[];
+    expect(deriveTurnEndHardState({ messages: pending, engine: "omp" }).awaitingConfirmation).toBe(
+      true,
+    );
+    expect(deriveTurnEndHardState({ messages: answered, engine: "omp" }).awaitingConfirmation).toBe(
+      false,
+    );
+  });
+});
+
+describe("engineFromSessionKey", () => {
+  it("parses native and draft keys", () => {
+    expect(engineFromSessionKey("claude/abc-123")).toBe("claude");
+    expect(engineFromSessionKey("new:omp:/tmp/ws")).toBe("omp");
   });
 });

@@ -261,6 +261,8 @@ export const zh = {
     selectSession: "选择或新建一个会话开始",
     thinking: "响应中",
     turnEnded: "已结束",
+    turnBackgroundRunning: "后台进行中",
+    turnAwaitingConfirmation: "等你确认",
     possiblyIncomplete: "回复可能不完整，可再发继续",
     retrying: "重试中 {{attempt}}/{{max}}",
     retryingNoMax: "重试中 {{attempt}}",

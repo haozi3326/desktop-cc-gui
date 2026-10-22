@@ -13,6 +13,10 @@ import {
 } from "./agent-task-steps";
 import { createEditLineStatsBuilder, type EditLineStat } from "./edit-line-stats";
 import { RollingStat } from "./RollingStat";
+import {
+  deriveTurnEndHardState,
+  turnEndHardStateActive,
+} from "../turn-end-status";
 
 const EMPTY_MESSAGES: Message[] = [];
 
@@ -787,6 +791,7 @@ export const RunStatusStrip = memo(function RunStatusStrip({
   engine: string;
   workspacePath: string;
 }) {
+  const { t } = useTranslation();
   const messages = useChatStore((s) =>
     sessionKey ? (s.bySession[sessionKey]?.messages ?? EMPTY_MESSAGES) : EMPTY_MESSAGES,
   );
@@ -796,6 +801,9 @@ export const RunStatusStrip = memo(function RunStatusStrip({
   const streaming = useChatStore((s) =>
     sessionKey ? (s.bySession[sessionKey]?.streaming ?? false) : false,
   );
+  const turnEndStatus = useChatStore((s) =>
+    sessionKey ? (s.bySession[sessionKey]?.turnEndStatus ?? null) : null,
+  );
   const allHistory = useMemo(
     () => (subagentHistory.length ? [...subagentHistory, ...messages] : messages),
     [subagentHistory, messages],
@@ -804,6 +812,15 @@ export const RunStatusStrip = memo(function RunStatusStrip({
     () => deriveAgentTaskSteps(allHistory, streaming, engine),
     [allHistory, streaming, engine],
   );
+  const turnHardState = useMemo(() => {
+    if (streaming || !turnEndStatus) return null;
+    const hard = deriveTurnEndHardState({
+      messages,
+      subagentHistory,
+      engine,
+    });
+    return turnEndHardStateActive(hard) ? hard : null;
+  }, [streaming, turnEndStatus, messages, subagentHistory, engine]);
   const files = useMemo(() => deriveEditedFiles(messages), [messages]);
   const todos = useMemo(() => deriveTodoList(allHistory), [allHistory]);
   const buildEditLineStats = useMemo(createEditLineStatsBuilder, [sessionKey]);
@@ -860,6 +877,23 @@ export const RunStatusStrip = memo(function RunStatusStrip({
 
   return (
     <div className="relative" data-testid="run-status-strip">
+      {turnHardState ? (
+        <div
+          className="mb-1 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-caption-1-medium text-text-secondary"
+          data-testid="run-status-hard-state"
+          role="status"
+        >
+          {turnHardState.backgroundRunning ? (
+            <span className="inline-flex items-center gap-1.5" data-testid="run-status-hard-background">
+              <BreathingDot />
+              {t("chat.turnBackgroundRunning")}
+            </span>
+          ) : null}
+          {turnHardState.awaitingConfirmation ? (
+            <span data-testid="run-status-hard-confirmation">{t("chat.turnAwaitingConfirmation")}</span>
+          ) : null}
+        </div>
+      ) : null}
       <RunStatusPanel
         section={section}
         steps={steps}
