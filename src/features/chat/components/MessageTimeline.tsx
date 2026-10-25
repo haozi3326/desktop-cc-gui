@@ -614,9 +614,10 @@ export const MessageTimeline = memo(function MessageTimeline({
       messages: session.messages,
       subagentHistory: session.subagentHistory,
       engine,
+      planReviewResume: session.planReviewResume,
     });
     return turnEndHardStateActive(hard) ? hard : null;
-  }, [showTurnEnd, session.messages, session.subagentHistory, engine]);
+  }, [showTurnEnd, session.messages, session.subagentHistory, session.planReviewResume, engine]);
   const count = rows.length + (streaming || session.compaction || showTurnEnd ? 1 : 0);
 
   const virtualizer = useVirtualizer({

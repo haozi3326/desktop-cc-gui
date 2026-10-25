@@ -99,6 +99,30 @@ describe("deriveTurnEndHardState", () => {
       false,
     );
   });
+
+  it("clears awaiting confirmation when a grant card is declined", () => {
+    const pending = [
+      {
+        seq: 1,
+        role: "grant",
+        text: "",
+        ts: null,
+        grant: { status: "pending" },
+      },
+    ] as Message[];
+    const declined = [
+      {
+        ...pending[0],
+        grant: { status: "declined" },
+      },
+    ] as Message[];
+    expect(deriveTurnEndHardState({ messages: pending, engine: "omp" }).awaitingConfirmation).toBe(
+      true,
+    );
+    expect(deriveTurnEndHardState({ messages: declined, engine: "omp" }).awaitingConfirmation).toBe(
+      false,
+    );
+  });
 });
 
 describe("engineFromSessionKey", () => {

@@ -901,4 +901,39 @@ describe("waiting vs settled A+C status rail", () => {
     );
     expect(container.querySelector('[data-testid="turn-ended-check"]')).not.toBeNull();
   });
+
+  it("hides 等你确认 when the grant card is already declined", async () => {
+    const messages: Message[] = [
+      { seq: 1, role: "user", text: "hi", ts: null },
+      {
+        seq: 2,
+        role: "grant",
+        text: "denied",
+        ts: null,
+        path: "/ws",
+        grant: { status: "declined" },
+      },
+    ];
+    await act(async () => {
+      root.render(
+        <MessageTimeline
+          session={{
+            ...EMPTY_SESSION,
+            messages,
+            turnEndStatus: {
+              at: 1,
+              possiblyIncomplete: false,
+              backgroundRunning: false,
+              awaitingConfirmation: true,
+            },
+          }}
+          streaming={false}
+          engine="omp"
+          onLoadEarlier={() => {}}
+          workspacePath="/ws"
+        />,
+      );
+    });
+    expect(container.querySelector('[data-testid="turn-hard-confirmation"]')).toBeNull();
+  });
 });

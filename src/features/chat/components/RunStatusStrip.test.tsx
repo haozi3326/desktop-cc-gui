@@ -273,6 +273,39 @@ describe("RunStatusStrip", () => {
     expect(container.querySelector("[aria-label='展开运行状态']")).not.toBeNull();
   });
 
+  it("does not repeat 等你确认 in the run-status strip when a grant is pending", async () => {
+    const messages: Message[] = [
+      msg(1, "user", "hi"),
+      {
+        seq: 2,
+        role: "grant",
+        text: "",
+        ts: null,
+        path: "/ws",
+        grant: { status: "pending", dir: "/ws" },
+      },
+      msg(3, "tool", "edit_file", "/ws/src/a.ts"),
+    ];
+    useChatStore.setState({
+      bySession: {
+        [KEY]: {
+          messages,
+          streaming: false,
+          turnEndStatus: {
+            at: 1,
+            possiblyIncomplete: false,
+            backgroundRunning: false,
+            awaitingConfirmation: true,
+          },
+        } as never,
+      },
+    });
+    await act(async () => {
+      root.render(<RunStatusStrip sessionKey={KEY} engine="omp" workspacePath={WS} />);
+    });
+    expect(container.querySelector("[data-testid='run-status-hard-confirmation']")).toBeNull();
+  });
+
   it("shows hard-state labels in the footer when subagents still run after settle", async () => {
     const messages: Message[] = [
       msg(1, "user", "go"),

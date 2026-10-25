@@ -3,6 +3,7 @@ import {
   AUTO_COMPACT_STORAGE_KEY,
   DEFAULT_AUTO_COMPACT_THRESHOLD,
   getAutoCompactSettings,
+  hasAwaitingUserConfirmation,
   hasPendingUserInput,
   migrateAutoCompactSettings,
   normalizeAutoCompactThreshold,
@@ -125,13 +126,75 @@ describe("shouldAutoCompact", () => {
 describe("hasPendingUserInput", () => {
   it("flags a live question, grant or plan dock and ignores settled rows", () => {
     expect(hasPendingUserInput([])).toBe(false);
-    expect(hasPendingUserInput([{ question: { status: "answered" } }])).toBe(false);
-    expect(hasPendingUserInput([{ question: { status: "pending" } }])).toBe(true);
-    expect(hasPendingUserInput([{ grant: { status: "pending" } }])).toBe(true);
-    expect(hasPendingUserInput([{ grant: { status: "granted" } }])).toBe(false);
+    expect(
+      hasPendingUserInput([{ role: "question", question: { status: "answered" } }]),
+    ).toBe(false);
+    expect(
+      hasPendingUserInput([{ role: "question", question: { status: "pending" } }]),
+    ).toBe(true);
+    expect(
+      hasPendingUserInput([{ role: "grant", grant: { status: "pending" } }]),
+    ).toBe(true);
+    expect(
+      hasPendingUserInput([{ role: "grant", grant: { status: "granted" } }]),
+    ).toBe(false);
     expect(hasPendingUserInput([{ planReview: { status: "awaiting_review" } }])).toBe(true);
     expect(hasPendingUserInput([{ planReview: { status: "submitting" } }])).toBe(true);
     expect(hasPendingUserInput([{ planReview: { status: "approved" } }])).toBe(false);
+    expect(hasPendingUserInput([{ planReview: { status: "superseded" } }])).toBe(false);
+    expect(hasPendingUserInput([{ planReview: { status: "deferred" } }])).toBe(true);
+  });
+});
+
+describe("hasAwaitingUserConfirmation", () => {
+  it("matches dock-visible grants, questions and plan reviews only", () => {
+    expect(hasAwaitingUserConfirmation([])).toBe(false);
+    expect(
+      hasAwaitingUserConfirmation([{ role: "grant", grant: { status: "declined" } }]),
+    ).toBe(false);
+    expect(
+      hasAwaitingUserConfirmation([{ role: "grant", grant: { status: "pending" } }]),
+    ).toBe(true);
+    expect(
+      hasAwaitingUserConfirmation([
+        { role: "question", question: { status: "answered" } },
+        { role: "question", question: { status: "pending" } },
+      ]),
+    ).toBe(true);
+    expect(
+      hasAwaitingUserConfirmation([
+        { role: "question", question: { status: "pending" } },
+        { role: "question", question: { status: "answered" } },
+      ]),
+    ).toBe(false);
+    expect(
+      hasAwaitingUserConfirmation([
+        {
+          planReview: {
+            status: "deferred",
+            planId: "p1",
+            revision: 1,
+          },
+        },
+      ]),
+    ).toBe(false);
+    expect(
+      hasAwaitingUserConfirmation(
+        [
+          {
+            planReview: {
+              status: "deferred",
+              planId: "p1",
+              revision: 1,
+            },
+          },
+        ],
+        "p1:1",
+      ),
+    ).toBe(true);
+    expect(
+      hasAwaitingUserConfirmation([{ planReview: { status: "superseded" } }]),
+    ).toBe(false);
   });
 });
 
