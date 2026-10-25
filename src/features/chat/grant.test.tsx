@@ -68,7 +68,7 @@ describe("permission denial grant flow", () => {
     vi.clearAllMocks();
     useChatStore.setState({
       openTabs: [],
-      active: null,
+      active: { engine: "claude", sessionId: "s-1", workspacePath: "/tmp/ws" },
       bySession: {
         [KEY]: {
           ...EMPTY_SESSION,
@@ -104,20 +104,25 @@ describe("permission denial grant flow", () => {
     expect(grantRows()).toHaveLength(1);
   });
 
-  it("accept persists the grant via grant_root and flips the card", async () => {
+  it("accept persists the grant via grant_root and auto-resends the last user message", async () => {
     handleEngineEvents([denialEvent("/data/x")], deps());
     const seq = grantRows()[0].seq;
     await useChatStore.getState().respondToGrant(KEY, seq, true);
     expect(vi.mocked(ipc.grantRoot)).toHaveBeenCalledWith("/data/x");
     expect(grantRows()[0].grant?.status).toBe("granted");
+    expect(vi.mocked(ipc.sendMessage)).toHaveBeenCalledTimes(1);
+    expect(vi.mocked(ipc.sendMessage)).toHaveBeenCalledWith(
+      expect.objectContaining({ prompt: "读一下那个文件" }),
+    );
   });
 
-  it("decline marks the card without touching the backend", async () => {
+  it("decline marks the card without touching the backend or resending", async () => {
     handleEngineEvents([denialEvent("/data/x")], deps());
     const seq = grantRows()[0].seq;
     await useChatStore.getState().respondToGrant(KEY, seq, false);
     expect(vi.mocked(ipc.grantRoot)).not.toHaveBeenCalled();
     expect(grantRows()[0].grant?.status).toBe("declined");
+    expect(vi.mocked(ipc.sendMessage)).not.toHaveBeenCalled();
   });
 
   it("decline suppresses an immediate duplicate denial for the same path", async () => {
@@ -146,18 +151,36 @@ describe("permission denial grant flow", () => {
     expect(grantRows()[0].path).toBe("./.codex_tmp/temp/pip-build-tracker-y5fck8oq");
   });
 
-  it("resendLastUser re-sends the last user message once granted", async () => {
+  it("resendLastUser re-sends the last user message when not already streaming", async () => {
     handleEngineEvents([denialEvent("/data/x")], deps());
     await useChatStore
       .getState()
       .respondToGrant(KEY, grantRows()[0].seq, true);
-    useChatStore.setState({
-      active: { engine: "claude", sessionId: "s-1", workspacePath: "/tmp/ws" },
-    });
+    vi.mocked(ipc.sendMessage).mockClear();
+    useChatStore.setState({ streamingByKey: {} });
     await useChatStore.getState().resendLastUser(KEY);
+    expect(vi.mocked(ipc.sendMessage)).toHaveBeenCalledTimes(1);
     expect(vi.mocked(ipc.sendMessage)).toHaveBeenCalledWith(
       expect.objectContaining({ prompt: "读一下那个文件" }),
     );
+  });
+
+  it("resendLastUser ignores a second concurrent call", async () => {
+    handleEngineEvents([denialEvent("/data/x")], deps());
+    vi.mocked(ipc.sendMessage).mockImplementation(
+      () =>
+        new Promise((resolve) =>
+          setTimeout(
+            () => resolve({ runId: "run-2", sessionId: null }),
+            30,
+          ),
+        ),
+    );
+    await Promise.all([
+      useChatStore.getState().resendLastUser(KEY),
+      useChatStore.getState().resendLastUser(KEY),
+    ]);
+    expect(vi.mocked(ipc.sendMessage)).toHaveBeenCalledTimes(1);
   });
 });
 
