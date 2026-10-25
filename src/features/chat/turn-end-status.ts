@@ -18,10 +18,13 @@ export interface TurnEndHardState {
   awaitingConfirmation: boolean;
 }
 
+/** Short replies that end like a finished sentence are not truncation stubs. */
+const ASSISTANT_STUB_SENTENCE_END = /[。！？.!?…]["'」』)]*$/u;
+
 /**
- * Heuristic for "model dumped a stub then end_turn" — very short assistant
- * text after stripping bracketed mode tags. Long normal replies must not
- * trip this (acceptance: 正常长回复不误报).
+ * Heuristic for "model dumped a stub then end_turn" — empty body or tag-only
+ * chrome, or a short fragment without sentence closure. Normal short replies
+ * (e.g. 「好的。」) and long finished text must not trip this.
  */
 export function assistantTextLooksPossiblyIncomplete(text: string): boolean {
   const cleaned = text
@@ -30,8 +33,10 @@ export function assistantTextLooksPossiblyIncomplete(text: string): boolean {
     .replace(/\s+/g, " ")
     .trim();
   if (!cleaned) return true;
-  // Unicode code points so CJK short stubs like 「回代码取原」 count correctly.
-  return [...cleaned].length <= 32;
+  const len = [...cleaned].length;
+  if (len > 32) return false;
+  if (ASSISTANT_STUB_SENTENCE_END.test(cleaned)) return false;
+  return true;
 }
 
 export function lastAssistantText(messages: Message[]): string {

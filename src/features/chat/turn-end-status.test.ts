@@ -39,7 +39,10 @@ describe("assistantTextLooksPossiblyIncomplete", () => {
         "[后端开发][模式：需求澄清][模型：coding-claude]\n\n回代码取原",
       ),
     ).toBe(true);
-    expect(assistantTextLooksPossiblyIncomplete("好的。")).toBe(true);
+  });
+
+  it("does not flag a short normal sentence like 好的。", () => {
+    expect(assistantTextLooksPossiblyIncomplete("好的。")).toBe(false);
   });
 
   it("does not flag a normal long reply", () => {

@@ -281,6 +281,7 @@ export const en: Messages = {
     turnBackgroundRunning: "Running in background",
     turnAwaitingConfirmation: "Waiting for you",
     possiblyIncomplete: "Reply may be incomplete — send again to continue",
+    noVisibleReply: "No visible reply this turn",
     retrying: "Retrying {{attempt}}/{{max}}",
     retryingNoMax: "Retrying {{attempt}}",
     modelNoChannel: "No available channel — pick a model that works and send again",

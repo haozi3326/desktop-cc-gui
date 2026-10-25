@@ -266,6 +266,7 @@ export const zh = {
     turnBackgroundRunning: "后台进行中",
     turnAwaitingConfirmation: "等你确认",
     possiblyIncomplete: "回复可能不完整，可再发继续",
+    noVisibleReply: "本回合没有可见回复",
     retrying: "重试中 {{attempt}}/{{max}}",
     retryingNoMax: "重试中 {{attempt}}",
     modelNoChannel: "无可用渠道：这模型没渠道，换一个能通的再发",
