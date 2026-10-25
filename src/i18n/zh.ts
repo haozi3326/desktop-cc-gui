@@ -1648,10 +1648,23 @@ export const zh = {
       retry: "重试",
     },
   },
+  skin: {
+    title: "换肤",
+    description: "选择壁纸后一键应用，重启后仍会保留。",
+    officialDefault: "官方默认",
+    builtin: {
+      twilightHills: "暮色山峦",
+    },
+    pickLocal: "选本地图片",
+    pickLocalTitle: "选择壁纸图片",
+    resetOfficial: "恢复官方默认",
+  },
   commands: {
     paletteTitle: "命令面板",
     placeholder: "输入命令…",
     empty: "没有匹配的命令",
+    openSkin: "换肤",
+    openSkinKeywords: "skin,wallpaper,huanfu,换肤,壁纸",
     openSettings: "打开设置",
     openSettingsKeywords: "settings,preferences,shezhi,设置",
     openPlugins: "插件管理",

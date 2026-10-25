@@ -1705,10 +1705,23 @@ export const en: Messages = {
       retry: "Retry",
     },
   },
+  skin: {
+    title: "Wallpaper",
+    description: "Pick a wallpaper and apply in one click; your choice is kept after restart.",
+    officialDefault: "Official default",
+    builtin: {
+      twilightHills: "Twilight hills",
+    },
+    pickLocal: "Choose local image",
+    pickLocalTitle: "Choose wallpaper image",
+    resetOfficial: "Reset to official default",
+  },
   commands: {
     paletteTitle: "Command palette",
     placeholder: "Type a command…",
     empty: "No matching commands",
+    openSkin: "Wallpaper",
+    openSkinKeywords: "skin,wallpaper,huanfu,换肤,壁纸",
     openSettings: "Open Settings",
     openSettingsKeywords: "settings,preferences,shezhi,设置",
     openPlugins: "Plugin Manager",

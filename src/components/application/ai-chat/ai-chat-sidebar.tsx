@@ -59,6 +59,7 @@ export function AiChatSidebar({
   onDeleteWorktree,
   onDropWorkspaceToSection,
   onCreateGroup,
+  onOpenSkin,
   onOpenSettings,
   onClose,
   flat = false,
@@ -106,6 +107,7 @@ export function AiChatSidebar({
   onOpenPlugins?: () => void;
   /** 任务工作台入口（原生中心页签；替换原「自动化」占位项）。 */
   onOpenMission?: () => void;
+  onOpenSkin?: () => void;
   onOpenSettings?: () => void;
   onClose?: () => void;
   flat?: boolean;
@@ -215,7 +217,7 @@ export function AiChatSidebar({
         </div>
       </div>
 
-      <SidebarFooter onOpenSettings={onOpenSettings} />
+      <SidebarFooter onOpenSkin={onOpenSkin} onOpenSettings={onOpenSettings} />
 
       <SessionSearchPalette
         open={searchOpen}

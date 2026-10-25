@@ -8,6 +8,7 @@ import MessageSquarePlus from "lucide-react/dist/esm/icons/message-square-plus";
 import PanelLeft from "lucide-react/dist/esm/icons/panel-left";
 import ScanSearch from "lucide-react/dist/esm/icons/scan-search";
 import Settings from "lucide-react/dist/esm/icons/settings";
+import Palette from "lucide-react/dist/esm/icons/palette";
 import Workflow from "lucide-react/dist/esm/icons/workflow";
 import { Focusable } from "react-aria-components";
 import { Tooltip, TooltipContent } from "@/components/base/tooltip/tooltip";
@@ -230,13 +231,20 @@ export function SidebarPrimaryNav({
 /** Secondary nav (设置) with the floating web-remote badge. The badge is
  *  floating, not laid out: it covers the empty half of the row (设置 keeps
  *  its full width and hover) and lets clicks through. */
-export function SidebarFooter({ onOpenSettings }: { onOpenSettings?: () => void }) {
+export function SidebarFooter({
+  onOpenSkin,
+  onOpenSettings,
+}: {
+  onOpenSkin?: () => void;
+  onOpenSettings?: () => void;
+}) {
   const { t } = useTranslation();
   const remoteActive = useRemoteControl();
   return (
     <div className="flex w-full shrink-0 flex-col gap-3 px-3 pb-3">
       <div className="relative flex w-full items-center">
         <nav className="flex w-full flex-col gap-1">
+          <NavItem icon={Palette} label={t("skin.title")} onClick={onOpenSkin} />
           <NavItem icon={Settings} label={t("settings.title")} onClick={onOpenSettings} />
         </nav>
         {remoteActive && (
