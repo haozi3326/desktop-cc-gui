@@ -957,6 +957,7 @@ export function SettingsShell({
   return (
     <dialog
       open
+      data-skin-opaque=""
       aria-label={ariaLabel}
       className={cx(
         "fixed inset-0 z-100 m-0 flex h-full max-h-none w-full max-w-none flex-col border-0 bg-background-full p-0 md:flex-row",

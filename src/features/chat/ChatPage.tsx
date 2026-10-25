@@ -220,6 +220,7 @@ export default function ChatPage() {
     <SplitDragProvider>
     <SkinWallpaperLayer />
     <div
+      data-chat-shell=""
       className={cx(
         "relative flex h-dvh w-full overflow-hidden bg-background-secondary-default",
         // Phones with `viewport-fit=cover` (index.html) lay the app under the
@@ -265,7 +266,10 @@ export default function ChatPage() {
         onNewWorktree={handleNewWorktree}
         onDeleteWorktree={handleDeleteWorktree}
       />
-      <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden bg-background-primary-default md:rounded-l-[14px] md:border-l md:border-separator-border">
+      <div
+        data-chat-shell=""
+        className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden bg-background-primary-default md:rounded-l-[14px] md:border-l md:border-separator-border"
+      >
         <SessionTabStrip
           tabs={tabItems}
           activeKey={activeTabKey}

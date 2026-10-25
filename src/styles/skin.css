@@ -21,3 +21,33 @@ html.dark[data-wallpaper="active"] {
   --color-background-inner-default: color-mix(in srgb, var(--color-neutral-900) 58%, transparent);
   --color-background-tertiary-default: color-mix(in srgb, var(--color-neutral-850) 50%, transparent);
 }
+
+/* Main chat columns only: drop stacked solid fills so the fixed cover layer
+ * shows through the center pane (sidebar already reads translucent tokens). */
+html[data-wallpaper="active"] [data-chat-shell] {
+  background-color: transparent !important;
+}
+
+/* Settings / modals / sheets: restore solid theme surfaces so chat text does
+ * not bleed through the panel while wallpaper mode is on. */
+html[data-wallpaper="active"] [data-skin-opaque] {
+  --color-background-full: var(--color-white);
+  --color-background-primary-default: var(--color-white);
+  --color-background-inner-default: var(--color-white);
+  --color-background-primary-hover: var(--color-neutral-100);
+  --color-background-secondary-default: var(--color-neutral-100);
+  --color-background-secondary-hover: var(--color-neutral-200);
+  --color-background-tertiary-default: var(--color-neutral-200);
+  --color-background-tertiary-hover: var(--color-neutral-300);
+}
+
+html.dark[data-wallpaper="active"] [data-skin-opaque] {
+  --color-background-full: var(--color-neutral-925);
+  --color-background-primary-default: var(--color-neutral-900);
+  --color-background-inner-default: color-mix(in srgb, var(--color-white) 6%, transparent);
+  --color-background-primary-hover: color-mix(in srgb, var(--color-white) 8%, transparent);
+  --color-background-secondary-default: var(--color-neutral-880);
+  --color-background-secondary-hover: var(--color-neutral-850);
+  --color-background-tertiary-default: var(--color-neutral-850);
+  --color-background-tertiary-hover: var(--color-neutral-700);
+}
