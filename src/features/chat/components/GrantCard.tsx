@@ -63,8 +63,11 @@ export function GrantCard({ message }: { message: Message }) {
         />
       )}
       {grant.status === "declined" && (
-        <div className="text-caption-1-regular text-text-tertiary">
-          {t("chat.grantDeclined")}
+        <div className="flex flex-col gap-1 text-caption-1-regular text-text-tertiary">
+          {grant.error && (
+            <div className="text-text-secondary">{grant.error}</div>
+          )}
+          <div>{t("chat.grantDeclined")}</div>
         </div>
       )}
     </div>
