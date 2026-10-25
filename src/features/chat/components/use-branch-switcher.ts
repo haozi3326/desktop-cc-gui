@@ -11,6 +11,13 @@ function baseName(path: string): string {
   return idx < 0 ? trimmed : trimmed.slice(idx + 1);
 }
 
+/** Load branch list + current HEAD for the status-bar chip (force refresh). */
+export function refreshFollowedBranchRepo(branchRepo: string): void {
+  const git = useGitStore.getState();
+  void git.loadBranches(branchRepo);
+  void git.refresh(branchRepo, true).catch(() => undefined);
+}
+
 /** Status-bar branch switcher. Tracks a Git repository — normally the active
  * workspace, but when the file tree selects a folder/file inside a *nested*
  * repository (a plain workspace root holding several repos), the chip, branch
@@ -48,9 +55,17 @@ export function useBranchSwitcher(active: ActiveSession | null) {
   // followed repository changes (30s TTL dedup lives in the git store).
   useEffect(() => {
     if (!branchRepo) return;
-    const git = useGitStore.getState();
-    void git.loadBranches(branchRepo);
-    void git.refresh(branchRepo).catch(() => undefined);
+    const refresh = () => refreshFollowedBranchRepo(branchRepo);
+    refresh();
+    const onVisible = () => {
+      if (!document.hidden) refresh();
+    };
+    window.addEventListener("focus", refresh);
+    document.addEventListener("visibilitychange", onVisible);
+    return () => {
+      window.removeEventListener("focus", refresh);
+      document.removeEventListener("visibilitychange", onVisible);
+    };
   }, [branchRepo]);
   const [branchError, setBranchError] = useState<string | null>(null);
   /** Dismiss the checkout-error banner (cleared anyway on the next attempt). */

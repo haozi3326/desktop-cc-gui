@@ -27,6 +27,7 @@ import {
   untrackRun,
 } from "./stream";
 import { buildTurnEndStatus, engineFromSessionKey } from "../turn-end-status";
+import { rememberSuppressedGrant } from "../grant-path";
 import { mergeUsage, parseUsage } from "../usage";
 import {
   bindRunLifecycle,
@@ -738,7 +739,9 @@ export function createMessagingActions(
       if (!message || message.role !== "grant" || message.grant?.status !== "pending") {
         return;
       }
+      const denialText = message.text ?? "";
       if (!accept) {
+        rememberSuppressedGrant(key, message.path, denialText);
         patchGrantBySeq(set, key, seq, () => ({ status: "declined" }));
         return;
       }
@@ -751,7 +754,12 @@ export function createMessagingActions(
           status: "granted",
         }));
       } catch (error) {
-        patchSession(set, key, { error: errorText(error) });
+        const err = errorText(error);
+        rememberSuppressedGrant(key, path, denialText);
+        patchGrantBySeq(set, key, seq, () => ({
+          status: "declined",
+          error: err,
+        }));
       }
     },
 

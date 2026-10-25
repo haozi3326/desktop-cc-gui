@@ -38,6 +38,10 @@ import {
 } from "./stream";
 import i18n from "@/lib/i18n";
 import { buildTurnEndStatus } from "../turn-end-status";
+import {
+  isGrantSuppressed,
+  resolveGrantDeniedPath,
+} from "../grant-path";
 import type { ChatStore } from "../store";
 import {
   ASK_OTHER_OPTION,
@@ -1414,8 +1418,9 @@ function onPermissionDenied(
     path?: string | null;
     message?: string;
   };
-  const path = data.path?.trim() || null;
   const message = (data.message ?? "").trim();
+  const path = resolveGrantDeniedPath(data.path, message);
+  if (isGrantSuppressed(key, path, message)) return;
   // Fold unflushed chunks first so the card lands after the streamed text.
   const pending = drainPending(key);
   let rowSeq = -1;

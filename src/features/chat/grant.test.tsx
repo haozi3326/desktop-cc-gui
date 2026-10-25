@@ -5,6 +5,7 @@ import i18n from "@/lib/i18n";
 import { GrantCard } from "./components/GrantCard";
 import { ipc } from "@/lib/ipc";
 import { useChatStore } from "./store";
+import { resetGrantSuppressions } from "./grant-path";
 import { handleEngineEvents, type EngineEventDeps } from "./store/engine-events";
 import { sessionKey } from "./store/persistence";
 import { EMPTY_SESSION } from "./store/stream";
@@ -63,6 +64,7 @@ function grantRows() {
 describe("permission denial grant flow", () => {
   beforeEach(() => {
     localStorage.clear();
+    resetGrantSuppressions();
     vi.clearAllMocks();
     useChatStore.setState({
       openTabs: [],
@@ -116,9 +118,32 @@ describe("permission denial grant flow", () => {
     await useChatStore.getState().respondToGrant(KEY, seq, false);
     expect(vi.mocked(ipc.grantRoot)).not.toHaveBeenCalled();
     expect(grantRows()[0].grant?.status).toBe("declined");
-    // A declined card must not block a fresh card for the same path.
+  });
+
+  it("decline suppresses an immediate duplicate denial for the same path", async () => {
     handleEngineEvents([denialEvent("/data/x")], deps());
-    expect(grantRows()).toHaveLength(2);
+    await useChatStore.getState().respondToGrant(KEY, grantRows()[0].seq, false);
+    handleEngineEvents([denialEvent("/data/x")], deps());
+    expect(grantRows().filter((m) => m.grant?.status === "pending")).toHaveLength(0);
+  });
+
+  it("allow failure closes the card with a readable error", async () => {
+    vi.mocked(ipc.grantRoot).mockRejectedValueOnce(new Error("cannot resolve ./gone: os error 3"));
+    handleEngineEvents([denialEvent("./gone")], deps());
+    const seq = grantRows()[0].seq;
+    await useChatStore.getState().respondToGrant(KEY, seq, true);
+    const row = grantRows()[0];
+    expect(row.grant?.status).toBe("declined");
+    expect(row.grant?.error).toContain("cannot resolve");
+  });
+
+  it("splits a multi-line find stderr blob into one grant path", () => {
+    const blob = [
+      "Exit code 1 find:",
+      "./.codex_tmp/temp/pip-build-tracker-y5fck8oq: Permission denied",
+    ].join("\n");
+    handleEngineEvents([denialEvent(blob, "")], deps());
+    expect(grantRows()[0].path).toBe("./.codex_tmp/temp/pip-build-tracker-y5fck8oq");
   });
 
   it("resendLastUser re-sends the last user message once granted", async () => {

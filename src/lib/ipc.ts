@@ -100,6 +100,8 @@ export interface Message {
   grant?: {
     status: "pending" | "granted" | "declined";
     dir?: string | null;
+    /** Set when allow failed (missing path, cannot resolve, etc.). */
+    error?: string | null;
   };
   /** AskUserQuestion card state (role "question"): the CLI parked the ask on
    * the control protocol; `pending` until the user picks or skips. `runId`
