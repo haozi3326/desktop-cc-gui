@@ -365,6 +365,7 @@ export const MessageRow = memo(function MessageRow({
   /** session.activeModel when message.model is missing. */
   fallbackModel?: string | null;
 }) {
+  const { t } = useTranslation();
   // A live row's text grows per store flush; a full markdown reparse per
   // flush scales linearly with reply length (~30ms at 32KB) and starves the
   // main thread, so the parse is throttled — and backed off further when the
@@ -396,9 +397,19 @@ export const MessageRow = memo(function MessageRow({
   if (message.role === "user") {
     return <UserMessageRow message={message} />;
   }
+  const bodyEmpty = !displayText.trim();
   return (
     <div className="group flex flex-col text-left">
-      <Markdown text={displayText} workspacePath={workspacePath} streaming={message.live} />
+      {bodyEmpty && !message.live ? (
+        <p
+          className="text-body-regular text-text-tertiary"
+          data-testid="assistant-empty-reply"
+        >
+          {t("chat.noVisibleReply")}
+        </p>
+      ) : (
+        <Markdown text={displayText} workspacePath={workspacePath} streaming={message.live} />
+      )}
       {turnFinal && (
         <div className="mt-1 flex items-center gap-2">
           <MessageActions text={message.text} />

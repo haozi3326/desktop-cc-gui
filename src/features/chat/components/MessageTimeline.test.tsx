@@ -791,6 +791,37 @@ describe("waiting vs settled A+C status rail", () => {
     expect(container.querySelector('[data-testid="turn-live-status"]')).toBeNull();
   });
 
+  it("shows a visible placeholder when the assistant body is empty after settle", async () => {
+    await act(async () => {
+      root.render(
+        <MessageTimeline
+          session={{
+            ...EMPTY_SESSION,
+            messages: [
+              { seq: 1, role: "user", text: "为什么这么慢 你能快点吗", ts: null },
+              { seq: 2, role: "assistant", text: "", ts: null },
+            ],
+            turnEndStatus: {
+              at: 1,
+              possiblyIncomplete: true,
+              backgroundRunning: false,
+              awaitingConfirmation: false,
+            },
+          }}
+          streaming={false}
+          engine="omp"
+          onLoadEarlier={() => {}}
+          workspacePath="/ws"
+        />,
+      );
+    });
+    const placeholder = container.querySelector('[data-testid="assistant-empty-reply"]');
+    expect(placeholder?.textContent).toBe("本回合没有可见回复");
+    expect(container.querySelector('[data-testid="turn-incomplete-hint"]')?.textContent).toBe(
+      "回复可能不完整，可再发继续",
+    );
+  });
+
   it("keeps the incomplete tip text under settled status, not in the composer", async () => {
     await act(async () => {
       root.render(

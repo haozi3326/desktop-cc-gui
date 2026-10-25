@@ -27,7 +27,11 @@ export type TimelineRow =
 const CONTENT_RE = /[\p{L}\p{N}\p{Extended_Pictographic}]/u;
 
 function isPlaceholderMessage(message: Message): boolean {
-  return message.role === "assistant" && !CONTENT_RE.test(message.text);
+  if (message.role !== "assistant") return false;
+  // Whitespace-only assistant rows are real settled turns with no body — the
+  // timeline renders an explicit empty-reply placeholder instead of hiding them.
+  if (!message.text.trim()) return false;
+  return !CONTENT_RE.test(message.text);
 }
 
 /** Row wrapper caches keyed by message reference. The store grows rows
