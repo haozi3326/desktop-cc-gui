@@ -87,6 +87,7 @@ export function SplitLayout({
   const body =
     !root || !geometry ? (
       <div
+        data-chat-shell=""
         data-split-pane={SOLO_PANE_ID}
         className="relative flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden bg-background-primary-default"
       >
@@ -199,6 +200,7 @@ const SplitPaneView = memo(function SplitPaneView({
         "absolute flex min-h-0 min-w-0 flex-col overflow-hidden bg-background-primary-default",
         animate && "transition-[left,top,width,height] duration-150 ease-out motion-reduce:transition-none",
       )}
+      data-chat-shell=""
     >
       <div
         onPointerDown={handleHeaderPointerDown}

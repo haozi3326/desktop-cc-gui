@@ -34,6 +34,7 @@ const PluginHub = lazy(() =>
 function Surface({ visible, children }: { visible: boolean; children: ReactNode }) {
   return (
     <div
+      data-chat-shell=""
       className={cx(
         "flex min-w-0 flex-col overflow-hidden bg-background-primary-default",
         visible ? "relative min-w-0 flex-1 basis-0" : "invisible absolute inset-0",
@@ -284,7 +285,10 @@ export function ChatCenterPane({
       {/* Center diff, opened from the changes panel's file rows. Its tab
           sits in the strip; ← or closing the tab returns to the chat. */}
       {diffView && (
-        <div className="relative flex min-w-0 flex-1 basis-0 flex-col overflow-hidden bg-background-primary-default">
+        <div
+          data-chat-shell=""
+          className="relative flex min-w-0 flex-1 basis-0 flex-col overflow-hidden bg-background-primary-default"
+        >
           <DiffView
             workspacePath={diffView.workspacePath}
             target={diffView.target}
