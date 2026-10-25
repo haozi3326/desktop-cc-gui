@@ -1,5 +1,5 @@
 import type { Message } from "@/lib/ipc";
-import { hasPendingUserInput } from "./auto-compact-context";
+import { hasAwaitingUserConfirmation } from "./auto-compact-context";
 import { deriveAgentTaskSteps } from "./components/agent-task-steps";
 import { parseDraftSessionKey } from "./store/persistence";
 
@@ -56,11 +56,15 @@ export function deriveTurnEndHardState(input: {
   messages: Message[];
   subagentHistory?: Message[];
   engine: string;
+  planReviewResume?: string | null;
 }): TurnEndHardState {
   const history = input.subagentHistory?.length
     ? [...input.subagentHistory, ...input.messages]
     : input.messages;
-  const awaitingConfirmation = hasPendingUserInput(input.messages);
+  const awaitingConfirmation = hasAwaitingUserConfirmation(
+    input.messages,
+    input.planReviewResume ?? null,
+  );
   const steps = deriveAgentTaskSteps(history, false, input.engine);
   const backgroundRunning = steps.some((step) => step.state === "active");
   return { backgroundRunning, awaitingConfirmation };
@@ -86,10 +90,11 @@ export function buildTurnEndStatus(
           messages,
           subagentHistory: options.subagentHistory,
           engine: options.engine,
+          planReviewResume: null,
         })
       : {
           backgroundRunning: false,
-          awaitingConfirmation: hasPendingUserInput(messages),
+          awaitingConfirmation: hasAwaitingUserConfirmation(messages),
         };
   return {
     at,

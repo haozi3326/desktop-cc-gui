@@ -13,10 +13,7 @@ import {
 } from "./agent-task-steps";
 import { createEditLineStatsBuilder, type EditLineStat } from "./edit-line-stats";
 import { RollingStat } from "./RollingStat";
-import {
-  deriveTurnEndHardState,
-  turnEndHardStateActive,
-} from "../turn-end-status";
+import { deriveTurnEndHardState } from "../turn-end-status";
 
 const EMPTY_MESSAGES: Message[] = [];
 
@@ -812,14 +809,13 @@ export const RunStatusStrip = memo(function RunStatusStrip({
     () => deriveAgentTaskSteps(allHistory, streaming, engine),
     [allHistory, streaming, engine],
   );
-  const turnHardState = useMemo(() => {
-    if (streaming || !turnEndStatus) return null;
-    const hard = deriveTurnEndHardState({
+  const backgroundRunningAfterSettle = useMemo(() => {
+    if (streaming || !turnEndStatus) return false;
+    return deriveTurnEndHardState({
       messages,
       subagentHistory,
       engine,
-    });
-    return turnEndHardStateActive(hard) ? hard : null;
+    }).backgroundRunning;
   }, [streaming, turnEndStatus, messages, subagentHistory, engine]);
   const files = useMemo(() => deriveEditedFiles(messages), [messages]);
   const todos = useMemo(() => deriveTodoList(allHistory), [allHistory]);
@@ -877,21 +873,16 @@ export const RunStatusStrip = memo(function RunStatusStrip({
 
   return (
     <div className="relative" data-testid="run-status-strip">
-      {turnHardState ? (
+      {backgroundRunningAfterSettle ? (
         <div
           className="mb-1 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-caption-1-medium text-text-secondary"
           data-testid="run-status-hard-state"
           role="status"
         >
-          {turnHardState.backgroundRunning ? (
-            <span className="inline-flex items-center gap-1.5" data-testid="run-status-hard-background">
-              <BreathingDot />
-              {t("chat.turnBackgroundRunning")}
-            </span>
-          ) : null}
-          {turnHardState.awaitingConfirmation ? (
-            <span data-testid="run-status-hard-confirmation">{t("chat.turnAwaitingConfirmation")}</span>
-          ) : null}
+          <span className="inline-flex items-center gap-1.5" data-testid="run-status-hard-background">
+            <BreathingDot />
+            {t("chat.turnBackgroundRunning")}
+          </span>
         </div>
       ) : null}
       <RunStatusPanel

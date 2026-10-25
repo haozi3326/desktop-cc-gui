@@ -1,5 +1,7 @@
 import { useCallback, useSyncExternalStore } from "react";
+import type { PlanReviewStatus } from "@/lib/ipc";
 import { readStoredJson, writeStored } from "@/lib/storage";
+import { isPlanActionable } from "./store/plan-review";
 
 export const AUTO_COMPACT_STORAGE_KEY = "ccgui-next.chat.autoCompactBySession";
 const AUTO_COMPACT_CHANGED_EVENT = "ccgui-next:auto-compact-changed";
@@ -159,9 +161,51 @@ export function shouldAutoCompact({
 /** Message slice that can park the session on a user decision. Structural on
  *  purpose: store messages satisfy it as-is, tests pass the bare fields. */
 export interface ParkedInputMessage {
+  role?: string;
   question?: { status?: string } | null;
   grant?: { status?: string } | null;
-  planReview?: { status?: string } | null;
+  planReview?: { status?: string; planId?: string; revision?: number } | null;
+}
+
+function pendingGrantInHistory(messages: readonly ParkedInputMessage[]): boolean {
+  return messages.some(
+    (message) => message.role === "grant" && message.grant?.status === "pending",
+  );
+}
+
+/** Latest question row only — older cards stay in history but must not keep
+ *  the session parked after a newer round settles. */
+function pendingQuestionInHistory(messages: readonly ParkedInputMessage[]): boolean {
+  for (let i = messages.length - 1; i >= 0; i--) {
+    const message = messages[i];
+    if (message.role !== "question") continue;
+    return message.question?.status === "pending";
+  }
+  return false;
+}
+
+/** Mirrors PlanReviewDock / usePendingPlanReview: awaiting or submitting, or
+ *  deferred only after the user reopened the card from the timeline. */
+function pendingPlanReviewInHistory(
+  messages: readonly ParkedInputMessage[],
+  planReviewResume: string | null,
+): boolean {
+  for (let i = messages.length - 1; i >= 0; i--) {
+    const record = messages[i].planReview;
+    if (!record?.status) continue;
+    if (record.status === "awaiting_review" || record.status === "submitting") {
+      return true;
+    }
+    if (
+      record.status === "deferred" &&
+      record.planId != null &&
+      record.revision != null &&
+      planReviewResume === `${record.planId}:${record.revision}`
+    ) {
+      return true;
+    }
+  }
+  return false;
 }
 
 /** True while the session waits on the user — the footer swaps the composer
@@ -170,12 +214,28 @@ export interface ParkedInputMessage {
 export function hasPendingUserInput(
   messages: readonly ParkedInputMessage[],
 ): boolean {
-  return messages.some(
-    (message) =>
-      message.question?.status === "pending" ||
-      message.grant?.status === "pending" ||
-      message.planReview?.status === "awaiting_review" ||
-      message.planReview?.status === "submitting",
+  return (
+    pendingGrantInHistory(messages) ||
+    pendingQuestionInHistory(messages) ||
+    messages.some(
+      (message) =>
+        message.planReview?.status != null &&
+        isPlanActionable(message.planReview.status as PlanReviewStatus),
+    )
+  );
+}
+
+/** Turn-end 「等你确认」 cue: same actionable surface as the docks (grant card,
+ *  question dock, plan dock) — ignores superseded plans and deferred plans the
+ *  user has not reopened. */
+export function hasAwaitingUserConfirmation(
+  messages: readonly ParkedInputMessage[],
+  planReviewResume: string | null = null,
+): boolean {
+  return (
+    pendingGrantInHistory(messages) ||
+    pendingQuestionInHistory(messages) ||
+    pendingPlanReviewInHistory(messages, planReviewResume)
   );
 }
 
