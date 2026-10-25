@@ -34,6 +34,15 @@ commandRegistry.register({
 });
 
 commandRegistry.register({
+  id: "builtin:openSkin",
+  title: () => i18n.t("commands.openSkin"),
+  keywords: keywords("commands.openSkinKeywords"),
+  run: () => {
+    window.dispatchEvent(new CustomEvent("ccgui:open-skin-panel"));
+  },
+});
+
+commandRegistry.register({
   id: "builtin:openPlugins",
   title: () => i18n.t("commands.openPlugins"),
   keywords: keywords("commands.openPluginsKeywords"),

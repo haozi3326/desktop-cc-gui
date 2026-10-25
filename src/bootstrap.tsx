@@ -4,6 +4,7 @@ import App from "./App";
 import i18n from "./lib/i18n";
 import { ipc } from "./lib/ipc";
 import { applyTheme, THEME_STORAGE_KEY } from "./features/settings/theme";
+import { applyStoredSkin } from "./features/skin/skin";
 import { applyFontPreferences, readCachedFontPreferences } from "./features/settings/font";
 import { hydrateBetaFeatures } from "./features/settings/beta-features";
 import { initializePerformancePreference } from "./lib/performance-preference";
@@ -60,6 +61,7 @@ export function startApp() {
   // window never flashes the wrong color scheme while settings load.
   const cachedTheme = window.localStorage.getItem(THEME_STORAGE_KEY);
   if (cachedTheme) applyTheme(cachedTheme);
+  applyStoredSkin();
   // Same for the font preferences: set the root font variables before first
   // paint so custom UI/code fonts don't swap in visibly after settings load.
   applyFontPreferences(readCachedFontPreferences());
