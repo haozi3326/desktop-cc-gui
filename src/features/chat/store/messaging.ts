@@ -158,6 +158,8 @@ export function createMessagingActions(
   // A replacement turn can reset the session's shared interrupted flag.
   // Keep cancellation attached to the send waiting on hooks or its ACK.
   const pendingSends = new Map<string, { cancelled: boolean }>();
+  /** One grant continuation / resend-last at a time per session key. */
+  const grantResendInFlight = new Set<string>();
 
   /**
    * Send a prompt to a specific tab. Unlike the public `send` action this is
@@ -753,6 +755,7 @@ export function createMessagingActions(
           ...grant,
           status: "granted",
         }));
+        await get().resendLastUser(key);
       } catch (error) {
         const err = errorText(error);
         rememberSuppressedGrant(key, path, denialText);
@@ -862,17 +865,23 @@ export function createMessagingActions(
     resendLastUser: async (key) => {
       const s = get();
       if (s.streamingByKey[key]) return; // a turn is already running
-      const messages = s.bySession[key]?.messages ?? [];
-      const lastUser = [...messages].reverse().find((m) => m.role === "user");
-      if (!lastUser) return;
-      const tab =
-        s.openTabs.find(
-          (t) => sessionKey(t.engine, t.sessionId, t.workspacePath) === key,
-        ) ?? s.active;
-      if (tab)
-        await sendPrompt(tab, lastUser.text, lastUser.images ?? [], {
-          computerUse: s.bySession[key]?.activeComputerUse === true,
-        });
+      if (grantResendInFlight.has(key)) return;
+      grantResendInFlight.add(key);
+      try {
+        const messages = s.bySession[key]?.messages ?? [];
+        const lastUser = [...messages].reverse().find((m) => m.role === "user");
+        if (!lastUser) return;
+        const tab =
+          s.openTabs.find(
+            (t) => sessionKey(t.engine, t.sessionId, t.workspacePath) === key,
+          ) ?? s.active;
+        if (tab)
+          await sendPrompt(tab, lastUser.text, lastUser.images ?? [], {
+            computerUse: s.bySession[key]?.activeComputerUse === true,
+          });
+      } finally {
+        grantResendInFlight.delete(key);
+      }
     },
 
     queueMessage: (text, images, options, target) => {
