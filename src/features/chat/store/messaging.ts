@@ -743,7 +743,7 @@ export function createMessagingActions(
       }
       const denialText = message.text ?? "";
       if (!accept) {
-        rememberSuppressedGrant(key, message.path, denialText);
+        rememberSuppressedGrant(key, message.path ?? null, denialText);
         patchGrantBySeq(set, key, seq, () => ({ status: "declined" }));
         return;
       }
