@@ -207,11 +207,12 @@ describe("SettingsPage misc rail", () => {
 });
 
 describe("SettingsPage system rail", () => {
-  it("keeps 智能体, 提示词 and 网络代理 under 系统, after 快捷键", async () => {
+  it("keeps 换肤 after 通用, then 智能体/提示词/网络代理 under 系统 after 快捷键", async () => {
     await render([]);
 
     expect(itemsUnder("settings.groupSystem")).toEqual([
       i18n.t("settings.general"),
+      i18n.t("skin.title"),
       i18n.t("settings.webAccess"),
       i18n.t("shortcuts.sectionTitle"),
       i18n.t("settings.agents"),
