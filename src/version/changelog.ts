@@ -29,6 +29,18 @@ export function changelogEntryFor(version: string): ChangelogEntry | undefined {
 
 export const CHANGELOG_DATA: ChangelogEntry[] = [
   {
+    version: "1.1.5",
+    date: "2026-10-26",
+    content: {
+      zh: `🧹 内部优化
+- **同事双平台安装包批次**：产品版本号统一为 1.1.5（package.json / Cargo.toml / tauri.conf.json），便于 macOS 与 Windows 安装包对外展示一致版本。
+- **壁纸皮肤 chrome 对齐批次**：右侧文件树等中间层 chrome 与壁纸侧栏对齐，便于本批次一并打包交付。`,
+      en: `🧹 Internal
+- **Colleague dual-platform installer batch**: product version unified to 1.1.5 (package.json / Cargo.toml / tauri.conf.json) so macOS and Windows installers show the same release label.
+- **Wallpaper skin chrome alignment batch**: middle-layer chrome such as the right file tree aligns with the wallpaper sidebar for this ship batch.`,
+    },
+  },
+  {
     version: "1.1.4",
     date: "2026-10-15",
     content: {
