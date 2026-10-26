@@ -22,10 +22,10 @@ html.dark[data-wallpaper="active"] {
   --color-background-tertiary-default: color-mix(in srgb, var(--color-neutral-850) 50%, transparent);
 }
 
-/* Main chat columns only: drop stacked solid fills so the fixed cover layer
- * shows through the center pane (sidebar already reads translucent tokens). */
+/* Main chat columns: match sidebar chrome translucency so the cover layer does
+ * not read brighter through the center than the side/bottom chrome. */
 html[data-wallpaper="active"] [data-chat-shell] {
-  background-color: transparent !important;
+  background-color: var(--color-background-secondary-default) !important;
 }
 
 /* Settings / modals / sheets: restore solid theme surfaces so chat text does
