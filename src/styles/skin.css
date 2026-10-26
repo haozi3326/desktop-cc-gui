@@ -3,23 +3,25 @@
  * panels stay readable over the cover layer. */
 
 html[data-wallpaper="active"] {
-  --color-background-full: color-mix(in srgb, var(--color-neutral-100) 58%, transparent);
-  --color-background-primary-default: color-mix(in srgb, var(--color-white) 68%, transparent);
+  --wallpaper-chrome-surface: color-mix(in srgb, var(--color-neutral-100) 52%, transparent);
+  --color-background-full: var(--wallpaper-chrome-surface);
+  --color-background-primary-default: var(--wallpaper-chrome-surface);
   --color-background-primary-hover: color-mix(in srgb, var(--color-neutral-100) 72%, transparent);
-  --color-background-secondary-default: color-mix(in srgb, var(--color-neutral-100) 52%, transparent);
+  --color-background-secondary-default: var(--wallpaper-chrome-surface);
   --color-background-secondary-hover: color-mix(in srgb, var(--color-neutral-200) 58%, transparent);
-  --color-background-inner-default: color-mix(in srgb, var(--color-white) 62%, transparent);
-  --color-background-tertiary-default: color-mix(in srgb, var(--color-neutral-200) 55%, transparent);
+  --color-background-inner-default: var(--wallpaper-chrome-surface);
+  --color-background-tertiary-default: var(--wallpaper-chrome-surface);
 }
 
 html.dark[data-wallpaper="active"] {
-  --color-background-full: color-mix(in srgb, var(--color-neutral-925) 52%, transparent);
-  --color-background-primary-default: color-mix(in srgb, var(--color-neutral-900) 65%, transparent);
+  --wallpaper-chrome-surface: color-mix(in srgb, var(--color-neutral-880) 48%, transparent);
+  --color-background-full: var(--wallpaper-chrome-surface);
+  --color-background-primary-default: var(--wallpaper-chrome-surface);
   --color-background-primary-hover: color-mix(in srgb, var(--color-neutral-850) 68%, transparent);
-  --color-background-secondary-default: color-mix(in srgb, var(--color-neutral-880) 48%, transparent);
+  --color-background-secondary-default: var(--wallpaper-chrome-surface);
   --color-background-secondary-hover: color-mix(in srgb, var(--color-neutral-850) 55%, transparent);
-  --color-background-inner-default: color-mix(in srgb, var(--color-neutral-900) 58%, transparent);
-  --color-background-tertiary-default: color-mix(in srgb, var(--color-neutral-850) 50%, transparent);
+  --color-background-inner-default: var(--wallpaper-chrome-surface);
+  --color-background-tertiary-default: var(--wallpaper-chrome-surface);
 }
 
 /* Main chat columns: match sidebar chrome translucency so the cover layer does
