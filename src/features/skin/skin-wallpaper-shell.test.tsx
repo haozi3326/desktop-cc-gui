@@ -45,7 +45,7 @@ afterEach(() => {
 });
 
 describe("wallpaper layout contracts", () => {
-  it("aligns [data-chat-shell] translucency with sidebar chrome when wallpaper is active", () => {
+  it("unifies sidebar, chat shell, and bottom chrome background when wallpaper is active", () => {
     applySkin({ kind: "builtin", builtinId: "twilight-hills" });
     const sidebar = document.createElement("aside");
     sidebar.className = "bg-background-secondary-default";
@@ -63,8 +63,8 @@ describe("wallpaper layout contracts", () => {
     const statusBg = getComputedStyle(statusBar).backgroundColor;
 
     expect(shellBg).toBe(sidebarBg);
+    expect(statusBg).toBe(sidebarBg);
     expect(shellBg).not.toBe("transparent");
-    expect(Math.abs(backgroundAlpha(shellBg) - backgroundAlpha(statusBg))).toBeLessThan(0.2);
   });
 
   it("settings shell stays opaque over wallpaper so chat text does not show through", async () => {
