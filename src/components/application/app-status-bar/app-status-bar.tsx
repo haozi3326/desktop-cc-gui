@@ -115,6 +115,7 @@ export function AppStatusBar() {
   return (
     <div
       className="flex h-7 shrink-0 items-center justify-end border-t border-separator-border bg-background-primary-default px-3 text-caption-1-medium text-text-tertiary select-none max-md:hidden"
+      data-chat-bleed-surface=""
     >
       {startItems.length > 0 && (
         <div className="me-auto flex min-w-0 items-center gap-3">

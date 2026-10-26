@@ -232,6 +232,7 @@ export function SessionTabStrip({
     <div
       data-tauri-drag-region="deep"
       data-tab-strip=""
+      data-chat-bleed-surface=""
       className={cx(
         "flex h-10 shrink-0 items-center border-b border-separator-border bg-background-primary-default select-none",
         (IS_MAC || customControls) && trafficLightInset && "pl-[80px]",
