@@ -45,7 +45,7 @@ afterEach(() => {
 });
 
 describe("wallpaper layout contracts", () => {
-  it("unifies sidebar, chat shell, and bottom chrome background when wallpaper is active", () => {
+  it("unifies sidebar, chat shell, file panel, and bottom chrome background when wallpaper is active", () => {
     applySkin({ kind: "builtin", builtinId: "twilight-hills" });
     const sidebar = document.createElement("aside");
     sidebar.className = "bg-background-secondary-default";
@@ -57,6 +57,15 @@ describe("wallpaper layout contracts", () => {
     shell.setAttribute("data-chat-shell", "");
     shell.className = "bg-background-primary-default";
     column.append(shell);
+    const rightPanelChrome = document.createElement("div");
+    rightPanelChrome.setAttribute("data-file-panel-chrome", "");
+    rightPanelChrome.className = "bg-background-primary-default";
+    document.body.append(rightPanelChrome);
+    const rightPanelShell = document.createElement("div");
+    rightPanelShell.setAttribute("data-file-panel-chrome", "");
+    rightPanelShell.setAttribute("data-chat-shell", "");
+    rightPanelShell.className = "bg-background-primary-default";
+    column.append(rightPanelShell);
     document.body.append(column);
     const statusBar = document.createElement("footer");
     statusBar.setAttribute("data-chat-bleed-surface", "");
@@ -65,16 +74,20 @@ describe("wallpaper layout contracts", () => {
 
     const sidebarBg = getComputedStyle(sidebar).backgroundColor;
     const columnBg = getComputedStyle(column).backgroundColor;
+    const rightBg = getComputedStyle(rightPanelChrome).backgroundColor;
     const shellBg = getComputedStyle(shell).backgroundColor;
+    const rightShellBg = getComputedStyle(rightPanelShell).backgroundColor;
     const statusBg = getComputedStyle(statusBar).backgroundColor;
 
     expect(columnBg).toBe(sidebarBg);
+    expect(rightBg).toBe(sidebarBg);
     expect(backgroundAlpha(shellBg)).toBe(0);
+    expect(backgroundAlpha(rightShellBg)).toBe(0);
     expect(backgroundAlpha(statusBg)).toBe(0);
     expect(columnBg).not.toBe("transparent");
   });
 
-  it("keeps sidebar, chat shell, and status bar in sync when chrome opacity changes", () => {
+  it("keeps sidebar, chat shell, file panel, and status bar in sync when chrome opacity changes", () => {
     applySkin({ kind: "builtin", builtinId: "twilight-hills" });
     setWallpaperChromeOpacity(35);
     const sidebar = document.createElement("aside");
@@ -87,6 +100,15 @@ describe("wallpaper layout contracts", () => {
     shell.setAttribute("data-chat-shell", "");
     shell.className = "bg-background-primary-default";
     column.append(shell);
+    const rightPanelChrome = document.createElement("div");
+    rightPanelChrome.setAttribute("data-file-panel-chrome", "");
+    rightPanelChrome.className = "bg-background-primary-default";
+    document.body.append(rightPanelChrome);
+    const rightPanelShell = document.createElement("div");
+    rightPanelShell.setAttribute("data-file-panel-chrome", "");
+    rightPanelShell.setAttribute("data-chat-shell", "");
+    rightPanelShell.className = "bg-background-primary-default";
+    column.append(rightPanelShell);
     document.body.append(column);
     const statusBar = document.createElement("footer");
     statusBar.setAttribute("data-chat-bleed-surface", "");
@@ -95,7 +117,9 @@ describe("wallpaper layout contracts", () => {
 
     const atLow = getComputedStyle(sidebar).backgroundColor;
     expect(getComputedStyle(column).backgroundColor).toBe(atLow);
+    expect(getComputedStyle(rightPanelChrome).backgroundColor).toBe(atLow);
     expect(backgroundAlpha(getComputedStyle(shell).backgroundColor)).toBe(0);
+    expect(backgroundAlpha(getComputedStyle(rightPanelShell).backgroundColor)).toBe(0);
     expect(backgroundAlpha(getComputedStyle(statusBar).backgroundColor)).toBe(0);
 
     expect(document.documentElement.style.getPropertyValue("--wallpaper-chrome-mix")).toBe("35%");
@@ -103,7 +127,9 @@ describe("wallpaper layout contracts", () => {
     setWallpaperChromeOpacity(70);
     const atHigh = getComputedStyle(sidebar).backgroundColor;
     expect(getComputedStyle(column).backgroundColor).toBe(atHigh);
+    expect(getComputedStyle(rightPanelChrome).backgroundColor).toBe(atHigh);
     expect(backgroundAlpha(getComputedStyle(shell).backgroundColor)).toBe(0);
+    expect(backgroundAlpha(getComputedStyle(rightPanelShell).backgroundColor)).toBe(0);
     expect(backgroundAlpha(getComputedStyle(statusBar).backgroundColor)).toBe(0);
     expect(document.documentElement.style.getPropertyValue("--wallpaper-chrome-mix")).toBe("70%");
   });

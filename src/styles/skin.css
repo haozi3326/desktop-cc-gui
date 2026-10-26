@@ -43,6 +43,17 @@ html[data-wallpaper="active"] [data-chat-column-chrome] {
   background-color: var(--color-background-secondary-default) !important;
 }
 
+/* Right file/changes panel sits inside the column chrome; nested shells stay
+ * clear so the veil is not painted twice (reads darker/warmer than sidebar).
+ * Standalone [data-file-panel-chrome] uses the same surface token for tests. */
+html[data-wallpaper="active"] [data-file-panel-chrome][data-chat-shell] {
+  background-color: transparent !important;
+}
+
+html[data-wallpaper="active"] [data-file-panel-chrome]:not([data-chat-shell]) {
+  background-color: var(--color-background-secondary-default) !important;
+}
+
 html[data-wallpaper="active"] [data-chat-bleed-surface] {
   background-color: transparent !important;
 }

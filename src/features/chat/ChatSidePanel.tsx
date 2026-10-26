@@ -69,6 +69,8 @@ export function ChatSidePanel({
         />
       </div>
       <div
+        data-chat-shell=""
+        data-file-panel-chrome=""
         className={cx(
           "flex h-full w-full flex-col overflow-hidden border-separator-border bg-background-primary-default",
           !panelCollapsed && "border-l",
