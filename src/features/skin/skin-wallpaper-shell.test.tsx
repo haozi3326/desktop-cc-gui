@@ -45,13 +45,26 @@ afterEach(() => {
 });
 
 describe("wallpaper layout contracts", () => {
-  it("clears [data-chat-shell] fills while wallpaper is active", () => {
+  it("aligns [data-chat-shell] translucency with sidebar chrome when wallpaper is active", () => {
     applySkin({ kind: "builtin", builtinId: "twilight-hills" });
+    const sidebar = document.createElement("aside");
+    sidebar.className = "bg-background-secondary-default";
+    document.body.append(sidebar);
     const shell = document.createElement("div");
     shell.setAttribute("data-chat-shell", "");
     shell.className = "bg-background-primary-default";
     document.body.append(shell);
-    expect(backgroundAlpha(getComputedStyle(shell).backgroundColor)).toBe(0);
+    const statusBar = document.createElement("footer");
+    statusBar.className = "bg-background-primary-default";
+    document.body.append(statusBar);
+
+    const sidebarBg = getComputedStyle(sidebar).backgroundColor;
+    const shellBg = getComputedStyle(shell).backgroundColor;
+    const statusBg = getComputedStyle(statusBar).backgroundColor;
+
+    expect(shellBg).toBe(sidebarBg);
+    expect(shellBg).not.toBe("transparent");
+    expect(Math.abs(backgroundAlpha(shellBg) - backgroundAlpha(statusBg))).toBeLessThan(0.2);
   });
 
   it("settings shell stays opaque over wallpaper so chat text does not show through", async () => {
