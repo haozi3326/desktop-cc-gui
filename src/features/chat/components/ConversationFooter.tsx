@@ -548,6 +548,7 @@ export function ConversationFooter({
     <>
       <div
         ref={dropRef}
+        data-chat-bleed-surface=""
         className="relative flex w-full flex-col gap-2.5 bg-background-primary-default px-4 pt-2.5 pb-2"
       >
         {isDragOver && (

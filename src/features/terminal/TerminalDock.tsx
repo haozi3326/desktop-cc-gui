@@ -99,6 +99,7 @@ export function TerminalDock({ workspacePath }: { workspacePath: string }) {
 
   return (
     <section
+      data-chat-bleed-surface=""
       className={cx(
         "relative flex shrink-0 flex-col border-t border-separator-border bg-background-full",
         dragging && "select-none",

@@ -50,21 +50,28 @@ describe("wallpaper layout contracts", () => {
     const sidebar = document.createElement("aside");
     sidebar.className = "bg-background-secondary-default";
     document.body.append(sidebar);
+    const column = document.createElement("div");
+    column.setAttribute("data-chat-column-chrome", "");
+    column.className = "bg-background-primary-default";
     const shell = document.createElement("div");
     shell.setAttribute("data-chat-shell", "");
     shell.className = "bg-background-primary-default";
-    document.body.append(shell);
+    column.append(shell);
+    document.body.append(column);
     const statusBar = document.createElement("footer");
+    statusBar.setAttribute("data-chat-bleed-surface", "");
     statusBar.className = "bg-background-primary-default";
-    document.body.append(statusBar);
+    column.append(statusBar);
 
     const sidebarBg = getComputedStyle(sidebar).backgroundColor;
+    const columnBg = getComputedStyle(column).backgroundColor;
     const shellBg = getComputedStyle(shell).backgroundColor;
     const statusBg = getComputedStyle(statusBar).backgroundColor;
 
-    expect(shellBg).toBe(sidebarBg);
-    expect(statusBg).toBe(sidebarBg);
-    expect(shellBg).not.toBe("transparent");
+    expect(columnBg).toBe(sidebarBg);
+    expect(backgroundAlpha(shellBg)).toBe(0);
+    expect(backgroundAlpha(statusBg)).toBe(0);
+    expect(columnBg).not.toBe("transparent");
   });
 
   it("keeps sidebar, chat shell, and status bar in sync when chrome opacity changes", () => {
@@ -73,24 +80,31 @@ describe("wallpaper layout contracts", () => {
     const sidebar = document.createElement("aside");
     sidebar.className = "bg-background-secondary-default";
     document.body.append(sidebar);
+    const column = document.createElement("div");
+    column.setAttribute("data-chat-column-chrome", "");
+    column.className = "bg-background-primary-default";
     const shell = document.createElement("div");
     shell.setAttribute("data-chat-shell", "");
     shell.className = "bg-background-primary-default";
-    document.body.append(shell);
+    column.append(shell);
+    document.body.append(column);
     const statusBar = document.createElement("footer");
+    statusBar.setAttribute("data-chat-bleed-surface", "");
     statusBar.className = "bg-background-primary-default";
-    document.body.append(statusBar);
+    column.append(statusBar);
 
     const atLow = getComputedStyle(sidebar).backgroundColor;
-    expect(getComputedStyle(shell).backgroundColor).toBe(atLow);
-    expect(getComputedStyle(statusBar).backgroundColor).toBe(atLow);
+    expect(getComputedStyle(column).backgroundColor).toBe(atLow);
+    expect(backgroundAlpha(getComputedStyle(shell).backgroundColor)).toBe(0);
+    expect(backgroundAlpha(getComputedStyle(statusBar).backgroundColor)).toBe(0);
 
     expect(document.documentElement.style.getPropertyValue("--wallpaper-chrome-mix")).toBe("35%");
 
     setWallpaperChromeOpacity(70);
     const atHigh = getComputedStyle(sidebar).backgroundColor;
-    expect(getComputedStyle(shell).backgroundColor).toBe(atHigh);
-    expect(getComputedStyle(statusBar).backgroundColor).toBe(atHigh);
+    expect(getComputedStyle(column).backgroundColor).toBe(atHigh);
+    expect(backgroundAlpha(getComputedStyle(shell).backgroundColor)).toBe(0);
+    expect(backgroundAlpha(getComputedStyle(statusBar).backgroundColor)).toBe(0);
     expect(document.documentElement.style.getPropertyValue("--wallpaper-chrome-mix")).toBe("70%");
   });
 

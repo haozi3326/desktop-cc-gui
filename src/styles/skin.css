@@ -32,10 +32,19 @@ html.dark[data-wallpaper="active"] {
   --color-background-tertiary-default: var(--wallpaper-chrome-surface);
 }
 
-/* Main chat columns: match sidebar chrome translucency so the cover layer does
- * not read brighter through the center than the side/bottom chrome. */
+/* Chat layout shells stack (page → column → split pane). Painting chrome on
+ * each layer compounds the veil and reads darker/warmer than the sidebars.
+ * One column-level surface; nested shells and full-bleed bars stay clear. */
 html[data-wallpaper="active"] [data-chat-shell] {
+  background-color: transparent !important;
+}
+
+html[data-wallpaper="active"] [data-chat-column-chrome] {
   background-color: var(--color-background-secondary-default) !important;
+}
+
+html[data-wallpaper="active"] [data-chat-bleed-surface] {
+  background-color: transparent !important;
 }
 
 /* Settings / modals / sheets: restore solid theme surfaces so chat text does
