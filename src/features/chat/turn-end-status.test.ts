@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { CONTINUE_LATCH_SYNTHETIC_REPLY } from "./assistant-body";
 import {
   assistantTextLooksPossiblyIncomplete,
   buildTurnEndStatus,
@@ -54,6 +55,16 @@ describe("assistantTextLooksPossiblyIncomplete", () => {
 });
 
 describe("buildTurnEndStatus", () => {
+  it("ignores Continue-latch synthetic text when reading the last assistant row", () => {
+    const messages = [
+      { seq: 1, role: "user", text: "q", ts: null },
+      { seq: 2, role: "assistant", text: "好的。", ts: null },
+      { seq: 3, role: "assistant", text: CONTINUE_LATCH_SYNTHETIC_REPLY, ts: null },
+    ] as Message[];
+    expect(lastAssistantText(messages)).toBe("好的。");
+    expect(buildTurnEndStatus(messages, 1).possiblyIncomplete).toBe(false);
+  });
+
   it("reads the last assistant row", () => {
     const messages = [
       { seq: 1, role: "user", text: "q", ts: null },
@@ -134,3 +145,5 @@ describe("engineFromSessionKey", () => {
     expect(engineFromSessionKey("new:omp:/tmp/ws")).toBe("omp");
   });
 });
+
+

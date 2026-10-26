@@ -46,8 +46,29 @@ import {
   rowSearchText,
   searchHighlightSupported,
 } from "./timeline-search";
+import {
+  currentTurnHasRenderableAssistantRow,
+  isContinueLatchSyntheticReply,
+  turnHasUsableAssistantBody,
+} from "../assistant-body";
 import { deriveTurnEndHardState, turnEndHardStateActive } from "../turn-end-status";
 import { BreathingDot } from "./RunStatusStrip";
+
+function appendSettledEmptyReplyRow(
+  messages: Message[],
+  rows: TimelineRow[],
+  showTurnEnd: boolean,
+): TimelineRow[] {
+  if (!showTurnEnd || turnHasUsableAssistantBody(messages)) return rows;
+  if (currentTurnHasRenderableAssistantRow(messages)) return rows;
+  const maxSeq = messages.reduce((max, m) => Math.max(max, m.seq), 0);
+  const injected: TimelineRow = {
+    kind: "msg",
+    message: { seq: maxSeq + 1, role: "assistant", text: "", ts: null },
+    turnFinal: true,
+  };
+  return [...rows, injected];
+}
 
 const TimelineRowView = memo(function TimelineRowView({
   row,
@@ -397,7 +418,8 @@ export const MessageRow = memo(function MessageRow({
   if (message.role === "user") {
     return <UserMessageRow message={message} />;
   }
-  const bodyEmpty = !displayText.trim();
+  const bodyEmpty =
+    !displayText.trim() || isContinueLatchSyntheticReply(message.text);
   return (
     <div className="group flex flex-col text-left">
       {bodyEmpty && !message.live ? (
@@ -582,7 +604,13 @@ export const MessageTimeline = memo(function MessageTimeline({
   const wideLayout = useChatStore((s) => s.wideLayout);
   const scrollRef = useRef<HTMLDivElement | null>(null);
   const items = session.messages;
-  const rows = useMemo(() => buildRows(items), [items]);
+  const builtRows = useMemo(() => buildRows(items), [items]);
+  const turnLive = streaming;
+  const showTurnEnd = Boolean(session.turnEndStatus) && !streaming && !session.compaction;
+  const rows = useMemo(
+    () => appendSettledEmptyReplyRow(items, builtRows, showTurnEnd),
+    [items, builtRows, showTurnEnd],
+  );
   // Anchor rail: one dash per user message (reference: messageAnchors).
   const buildAnchorRows = useMemo(createAnchorRowsBuilder, []);
   const anchors = useMemo(() => buildAnchorRows(rows), [buildAnchorRows, rows]);
@@ -614,11 +642,9 @@ export const MessageTimeline = memo(function MessageTimeline({
   // The reply footer (copy + time + usage) only makes sense once the turn
   // settles: while streaming, mid-turn segments (kimi multi-message replies)
   // are not the final word.
-  const turnLive = streaming;
   // The tail item is the turn-status indicator (or the grey compaction line).
   // A compaction keeps it mounted even between sends, so the line does not
   // blink out in the gap between the compact turn and the resume turn.
-  const showTurnEnd = Boolean(session.turnEndStatus) && !streaming && !session.compaction;
   const turnHardState = useMemo(() => {
     if (!showTurnEnd) return null;
     const hard = deriveTurnEndHardState({
@@ -902,3 +928,5 @@ export const MessageTimeline = memo(function MessageTimeline({
     </div>
   );
 });
+
+
