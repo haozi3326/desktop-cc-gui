@@ -1,4 +1,5 @@
 import type { Message } from "@/lib/ipc";
+import { lastUsableAssistantText } from "./assistant-body";
 import { hasAwaitingUserConfirmation } from "./auto-compact-context";
 import { deriveAgentTaskSteps } from "./components/agent-task-steps";
 import { parseDraftSessionKey } from "./store/persistence";
@@ -39,11 +40,9 @@ export function assistantTextLooksPossiblyIncomplete(text: string): boolean {
   return true;
 }
 
+/** Last assistant row with user-visible body (skips Continue-latch synthetic). */
 export function lastAssistantText(messages: Message[]): string {
-  for (let i = messages.length - 1; i >= 0; i--) {
-    if (messages[i].role === "assistant") return messages[i].text ?? "";
-  }
-  return "";
+  return lastUsableAssistantText(messages);
 }
 
 /** Engine id from a `sessionKey` route (`engine/id` or `new:engine:path`). */

@@ -1,4 +1,8 @@
 import type { Message } from "@/lib/ipc";
+import {
+  isContinueLatchSyntheticReply,
+  isHarnessPlaceholderAssistantText,
+} from "../assistant-body";
 import { isCompactCommandRow, isResumeNudgeRow } from "../internal-rows";
 
 export type ProcessItem = {
@@ -20,18 +24,12 @@ export type TimelineRow =
    *  bubble and stays there, so the compaction is still traceable later. */
   | { kind: "curtain"; seq: number };
 
-/** Letters, digits, or emoji make a segment real content. Harnesses emit
- * bare placeholder segments ("·", ".") between tool batches; rendered as a
- * bubble they read as an empty box with a lone dot, and each one splits what
- * should be a single folded tool run into alternating chips. */
-const CONTENT_RE = /[\p{L}\p{N}\p{Extended_Pictographic}]/u;
-
-function isPlaceholderMessage(message: Message): boolean {
+function isHiddenAssistantSegment(message: Message): boolean {
   if (message.role !== "assistant") return false;
+  if (isContinueLatchSyntheticReply(message.text)) return true;
   // Whitespace-only assistant rows are real settled turns with no body — the
   // timeline renders an explicit empty-reply placeholder instead of hiding them.
-  if (!message.text.trim()) return false;
-  return !CONTENT_RE.test(message.text);
+  return isHarnessPlaceholderAssistantText(message.text);
 }
 
 /** Row wrapper caches keyed by message reference. The store grows rows
@@ -112,7 +110,7 @@ export function buildRows(messages: Message[]): TimelineRow[] {
   let i = 0;
   while (i < messages.length) {
     const message = messages[i];
-    if (isPlaceholderMessage(message)) {
+    if (isHiddenAssistantSegment(message)) {
       i++;
       continue;
     }
@@ -135,7 +133,7 @@ export function buildRows(messages: Message[]): TimelineRow[] {
         const step = messages[i];
         if (step.role === "tool" || step.role === "thinking") {
           items.push(getProcessItem(step));
-        } else if (!isPlaceholderMessage(step)) {
+        } else if (!isHiddenAssistantSegment(step)) {
           break;
         }
         i++;

@@ -791,6 +791,129 @@ describe("waiting vs settled A+C status rail", () => {
     expect(container.querySelector('[data-testid="turn-live-status"]')).toBeNull();
   });
 
+  it("shows a visible placeholder when only Continue-latch synthetic text settled", async () => {
+    await act(async () => {
+      root.render(
+        <MessageTimeline
+          session={{
+            ...EMPTY_SESSION,
+            messages: [
+              { seq: 1, role: "user", text: "为什么这么慢", ts: null },
+              { seq: 2, role: "tool", text: "Read", ts: null },
+              {
+                seq: 3,
+                role: "assistant",
+                text: "No response requested.",
+                ts: null,
+              },
+            ],
+            turnEndStatus: {
+              at: 1,
+              possiblyIncomplete: true,
+              backgroundRunning: false,
+              awaitingConfirmation: false,
+            },
+          }}
+          streaming={false}
+          engine="omp"
+          onLoadEarlier={() => {}}
+          workspacePath="/ws"
+        />,
+      );
+    });
+    const placeholder = container.querySelector('[data-testid="assistant-empty-reply"]');
+    expect(placeholder?.textContent).toBe("本回合没有可见回复");
+    expect(container.querySelector('[data-testid="turn-end-status"]')?.textContent).toContain("已结束");
+  });
+
+  it("keeps a real assistant reply visible when a later Continue-latch settles", async () => {
+    await act(async () => {
+      root.render(
+        <MessageTimeline
+          session={{
+            ...EMPTY_SESSION,
+            messages: [
+              { seq: 1, role: "user", text: "解释一下", ts: null },
+              { seq: 2, role: "assistant", text: "这是上一回合的真实回答。", ts: null },
+              { seq: 3, role: "assistant", text: "No response requested.", ts: null },
+            ],
+            turnEndStatus: {
+              at: 1,
+              possiblyIncomplete: false,
+              backgroundRunning: false,
+              awaitingConfirmation: false,
+            },
+          }}
+          streaming={false}
+          engine="omp"
+          onLoadEarlier={() => {}}
+          workspacePath="/ws"
+        />,
+      );
+    });
+    expect(container.textContent).toContain("这是上一回合的真实回答。");
+    expect(container.querySelectorAll('[data-testid="assistant-empty-reply"]').length).toBe(0);
+    expect(container.querySelector('[data-testid="turn-incomplete-hint"]')).toBeNull();
+  });
+
+  it("shows a visible placeholder when the turn is only tools and no assistant row", async () => {
+    await act(async () => {
+      root.render(
+        <MessageTimeline
+          session={{
+            ...EMPTY_SESSION,
+            messages: [
+              { seq: 1, role: "user", text: "查一下", ts: null },
+              { seq: 2, role: "tool", text: "Grep · pattern", ts: null },
+            ],
+            turnEndStatus: {
+              at: 1,
+              possiblyIncomplete: true,
+              backgroundRunning: false,
+              awaitingConfirmation: false,
+            },
+          }}
+          streaming={false}
+          engine="omp"
+          onLoadEarlier={() => {}}
+          workspacePath="/ws"
+        />,
+      );
+    });
+    expect(container.querySelector('[data-testid="assistant-empty-reply"]')?.textContent).toBe(
+      "本回合没有可见回复",
+    );
+    expect(container.querySelector('[data-testid="turn-end-status"]')?.textContent).toContain("已结束");
+  });
+
+  it("does not mark 好的。 as incomplete after settle", async () => {
+    await act(async () => {
+      root.render(
+        <MessageTimeline
+          session={{
+            ...EMPTY_SESSION,
+            messages: [
+              { seq: 1, role: "user", text: "好", ts: null },
+              { seq: 2, role: "assistant", text: "好的。", ts: null },
+            ],
+            turnEndStatus: {
+              at: 1,
+              possiblyIncomplete: false,
+              backgroundRunning: false,
+              awaitingConfirmation: false,
+            },
+          }}
+          streaming={false}
+          engine="omp"
+          onLoadEarlier={() => {}}
+          workspacePath="/ws"
+        />,
+      );
+    });
+    expect(container.querySelector('[data-testid="turn-incomplete-hint"]')).toBeNull();
+    expect(container.textContent).toContain("好的。");
+  });
+
   it("shows a visible placeholder when the assistant body is empty after settle", async () => {
     await act(async () => {
       root.render(
