@@ -38,7 +38,7 @@ commandRegistry.register({
   title: () => i18n.t("commands.openSkin"),
   keywords: keywords("commands.openSkinKeywords"),
   run: () => {
-    window.dispatchEvent(new CustomEvent("ccgui:open-skin-panel"));
+    window.location.hash = "#/settings?page=skin";
   },
 });
 

@@ -1,6 +1,7 @@
 import { lazy, Suspense, type ComponentType } from "react";
 import { useTranslation } from "react-i18next";
 import Settings from "lucide-react/dist/esm/icons/settings";
+import Palette from "lucide-react/dist/esm/icons/palette";
 import PawPrint from "lucide-react/dist/esm/icons/paw-print";
 import Keyboard from "lucide-react/dist/esm/icons/keyboard";
 import Globe from "lucide-react/dist/esm/icons/globe";
@@ -24,6 +25,7 @@ import { CLI_DISPLAY_NAMES } from "@/components/foundations/icons/engine-brands"
 import { settingsRegistry } from "@ccgui/plugin-sdk";
 import { cx } from "@/utils/cx";
 import { GeneralSection } from "./GeneralSection";
+import { SkinSection } from "./SkinSection";
 import { PetSection } from "./PetSection";
 import { ProxySection } from "./ProxySection";
 import { WorkspacesSection } from "./WorkspacesSection";
@@ -73,6 +75,15 @@ settingsRegistry.register({
   group: "system",
   order: 0,
   component: GeneralSection,
+});
+settingsRegistry.register({
+  id: "skin",
+  key: "skin",
+  label: () => i18n.t("skin.title"),
+  icon: Palette,
+  group: "system",
+  order: 0.5,
+  component: SkinSection,
 });
 // 页面内部的搜索行索引（settings-search.ts）：跟页面一起注册。覆盖了哪些页
 // 在 builtin-search.ts 里一眼能看全（每页一段）。

@@ -2,6 +2,8 @@ import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { SidebarFooter } from "@/components/application/ai-chat/sidebar-chrome";
+import { settingsRegistry } from "@ccgui/plugin-sdk";
+import "../settings/sections";
 
 vi.mock("react-i18next", () => ({
   useTranslation: () => ({ t: (key: string) => key }),
@@ -27,14 +29,17 @@ afterEach(async () => {
   node.remove();
 });
 
-it("exposes an independent 换肤 nav entry beside settings", async () => {
-  const onOpenSkin = vi.fn();
+it("does not expose a standalone sidebar skin entry (wallpaper lives in Settings)", async () => {
   await act(async () => {
-    root.render(<SidebarFooter onOpenSkin={onOpenSkin} onOpenSettings={vi.fn()} />);
+    root.render(<SidebarFooter onOpenSettings={vi.fn()} />);
   });
   const buttons = [...node.querySelectorAll("button")];
   const skinBtn = buttons.find((b) => b.textContent?.includes("skin.title"));
-  expect(skinBtn).toBeDefined();
-  await act(async () => skinBtn!.click());
-  expect(onOpenSkin).toHaveBeenCalledOnce();
+  expect(skinBtn).toBeUndefined();
+});
+
+it("registers a skin/wallpaper page in settings navigation", () => {
+  const skin = settingsRegistry.get("skin");
+  expect(skin).toBeDefined();
+  expect(skin!.key).toBe("skin");
 });

@@ -4,7 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import Settings from "lucide-react/dist/esm/icons/settings";
 import "../../index.css";
 import { SettingsShell, type SettingsNavGroup } from "@/components/application/settings/settings-shell";
-import { applySkin, setSkinDefault } from "./skin";
+import { applySkin, setSkinDefault, setWallpaperChromeOpacity } from "./skin";
 
 declare global {
   // eslint-disable-next-line no-var
@@ -67,8 +67,59 @@ describe("wallpaper layout contracts", () => {
     expect(shellBg).not.toBe("transparent");
   });
 
+  it("keeps sidebar, chat shell, and status bar in sync when chrome opacity changes", () => {
+    applySkin({ kind: "builtin", builtinId: "twilight-hills" });
+    setWallpaperChromeOpacity(35);
+    const sidebar = document.createElement("aside");
+    sidebar.className = "bg-background-secondary-default";
+    document.body.append(sidebar);
+    const shell = document.createElement("div");
+    shell.setAttribute("data-chat-shell", "");
+    shell.className = "bg-background-primary-default";
+    document.body.append(shell);
+    const statusBar = document.createElement("footer");
+    statusBar.className = "bg-background-primary-default";
+    document.body.append(statusBar);
+
+    const atLow = getComputedStyle(sidebar).backgroundColor;
+    expect(getComputedStyle(shell).backgroundColor).toBe(atLow);
+    expect(getComputedStyle(statusBar).backgroundColor).toBe(atLow);
+
+    expect(document.documentElement.style.getPropertyValue("--wallpaper-chrome-mix")).toBe("35%");
+
+    setWallpaperChromeOpacity(70);
+    const atHigh = getComputedStyle(sidebar).backgroundColor;
+    expect(getComputedStyle(shell).backgroundColor).toBe(atHigh);
+    expect(getComputedStyle(statusBar).backgroundColor).toBe(atHigh);
+    expect(document.documentElement.style.getPropertyValue("--wallpaper-chrome-mix")).toBe("70%");
+  });
+
   it("settings shell stays opaque over wallpaper so chat text does not show through", async () => {
     applySkin({ kind: "builtin", builtinId: "twilight-hills" });
+    const host = document.createElement("div");
+    document.body.append(host);
+    const root: Root = createRoot(host);
+    await act(async () => {
+      root.render(
+        <SettingsShell
+          onClose={() => {}}
+          defaultPage="demo"
+          ariaLabel="设置"
+          groups={GROUPS}
+          titles={{ demo: "演示页" }}
+          renderPage={() => <p>stub</p>}
+        />,
+      );
+    });
+    const dialog = document.querySelector<HTMLDialogElement>("dialog[data-skin-opaque]");
+    expect(dialog).not.toBeNull();
+    expect(backgroundAlpha(getComputedStyle(dialog!).backgroundColor)).toBeGreaterThanOrEqual(0.99);
+    await act(async () => root.unmount());
+  });
+
+  it("settings shell stays opaque when chrome opacity is lowered", async () => {
+    applySkin({ kind: "builtin", builtinId: "twilight-hills" });
+    setWallpaperChromeOpacity(20);
     const host = document.createElement("div");
     document.body.append(host);
     const root: Root = createRoot(host);

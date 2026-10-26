@@ -1716,6 +1716,9 @@ export const en: Messages = {
     pickLocal: "Choose local image",
     pickLocalTitle: "Choose wallpaper image",
     resetOfficial: "Reset to official default",
+    chromeOpacity: "Chrome opacity",
+    chromeOpacityHint: "Adjusts sidebar, chat, and status bar translucency together.",
+    chromeOpacityDisabled: "Turn on a wallpaper to adjust chrome opacity.",
   },
   commands: {
     paletteTitle: "Command palette",
