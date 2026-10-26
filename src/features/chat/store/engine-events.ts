@@ -494,10 +494,18 @@ export interface EngineEventDeps {
   upsertSessionMeta: (meta: SessionMeta) => void;
   /** Re-fetch the latest token usage from session history for the given session key. */
   refreshSessionUsage?: (key: string) => Promise<void>;
+  /** Merge missing assistant body from the transcript tail after settle. */
+  refreshSessionTurnBody?: (key: string) => Promise<void>;
   /** After a turn settles: feeds the background memory review's turn counter
    *  (features/bots/memory-review.ts). Optional so tests can drive the router
    *  without the memory feature. */
   turnSettled?: (key: string) => void;
+}
+
+function isLateAssistantBodyEvent(event: ChatEngineEvent): boolean {
+  if (event.kind !== "message") return false;
+  const data = event.data as { role?: string; text?: string };
+  return data.role === "assistant" && Boolean(data.text?.trim());
 }
 
 /** Collapse whitespace and cap a prompt for use as a session title. */
@@ -839,16 +847,24 @@ function onMessage(
     const durationMs = prev.turnStartedAt
       ? Math.max(0, Date.now() - prev.turnStartedAt)
       : null;
-    const messages = mergeAssistantSnapshot(prev.messages, text, {
+    const meta = {
       ts: new Date().toISOString(),
       model: stampedModel(deps, event.engine, key),
       effort: stampedEffort(deps, event.engine, key),
-      durationMs,
-    });
+      ...(durationMs != null ? { durationMs } : {}),
+    };
+    const messages = mergeAssistantSnapshot(prev.messages, text, meta);
+    const turnEndStatus =
+      !prev.streaming && prev.turnEndStatus
+        ? buildTurnEndStatus(messages, prev.turnEndStatus.at, {
+            subagentHistory: prev.subagentHistory,
+            engine: event.engine,
+          })
+        : prev.turnEndStatus;
     return {
       bySession: {
         ...s.bySession,
-        [key]: { ...prev, messages },
+        [key]: { ...prev, messages, turnEndStatus },
       },
     };
   });
@@ -1987,6 +2003,11 @@ function onDone(event: ChatEngineEvent, key: string, deps: EngineEventDeps) {
     if (event.engine === "claude" || compactTurn) {
       setTimeout(() => {
         deps.refreshSessionUsage?.(key)?.catch(() => {});
+        deps.refreshSessionTurnBody?.(key)?.catch(() => {});
+      }, 400);
+    } else {
+      setTimeout(() => {
+        deps.refreshSessionTurnBody?.(key)?.catch(() => {});
       }, 400);
     }
   }
@@ -2088,6 +2109,7 @@ export function handleEngineEvents(
           (event.kind === "warn" ||
             event.kind === "error" ||
             event.kind === "question_settled" ||
+            isLateAssistantBodyEvent(event) ||
             // A next_turn review can arrive after its plan turn's done.
             event.kind === "plan_draft" ||
             event.kind === "plan_review"))
@@ -2164,6 +2186,8 @@ export function handleEngineEvents(
         // Shutdown diagnostics remain visible, but cannot restart a turn or
         // overwrite a newer turn's state.
         onWarn(event, key, deps);
+      } else if (isLateAssistantBodyEvent(event)) {
+        onMessage(event, key, deps);
       }
       continue;
     }

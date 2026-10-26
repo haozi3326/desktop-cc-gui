@@ -278,4 +278,5 @@ export interface ChatStore {
   ) => Promise<void>;
   /** Re-fetch the latest token usage from session history for the current session. */
   refreshSessionUsage: (key?: string) => Promise<void>;
+  refreshSessionTurnBody: (key?: string) => Promise<void>;
 }

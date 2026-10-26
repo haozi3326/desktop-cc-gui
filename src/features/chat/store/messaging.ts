@@ -28,6 +28,7 @@ import {
 } from "./stream";
 import { buildTurnEndStatus, engineFromSessionKey } from "../turn-end-status";
 import { rememberSuppressedGrant } from "../grant-path";
+import { reconcileAssistantTailFromHistory } from "./session-tail-reconcile";
 import { mergeUsage, parseUsage } from "../usage";
 import {
   bindRunLifecycle,
@@ -148,6 +149,7 @@ export function createMessagingActions(
   | "interrupt"
   | "compactContext"
   | "refreshSessionUsage"
+  | "refreshSessionTurnBody"
 > & {
   /** After a turn ends, send the oldest queued message for that session. */
   drainQueue: (key: string) => void;
@@ -574,6 +576,7 @@ export function createMessagingActions(
         markUnseenIfBackground,
         upsertSessionMeta: (meta) => upsertSessionMetaInto(set, meta),
         refreshSessionUsage: (sessionKey) => get().refreshSessionUsage(sessionKey),
+        refreshSessionTurnBody: (sessionKey) => get().refreshSessionTurnBody(sessionKey),
       });
       // Stop can precede native spawn while invoke is still in flight; retry
       // the interrupt now that the backend has registered the child.
@@ -1173,6 +1176,67 @@ export function createMessagingActions(
         }
       } catch (error) {
         console.error("Failed to refresh session usage:", error);
+      }
+    },
+
+    refreshSessionTurnBody: async (key?: string) => {
+      const { active, openTabs } = get();
+      const targetKey =
+        key ??
+        (active
+          ? sessionKey(active.engine, active.sessionId, active.workspacePath)
+          : "");
+      if (!targetKey) return;
+      const targetTab = openTabs.find(
+        (t) => sessionKey(t.engine, t.sessionId, t.workspacePath) === targetKey,
+      );
+      const slashIdx = targetKey.indexOf("/");
+      const engine = targetTab?.engine ?? targetKey.slice(0, slashIdx);
+      const sessionId = targetTab?.sessionId ?? targetKey.slice(slashIdx + 1);
+      if (targetKey.startsWith("new:") || slashIdx < 1 || !engine || !sessionId) return;
+      const before = get().bySession[targetKey];
+      if (!before || before.streaming) return;
+
+      try {
+        for (let attempt = 0; attempt < 3; attempt += 1) {
+          const live = get().bySession[targetKey];
+          if (!live || live.streaming) return;
+          const page = await loadHistoryPage(
+            engine,
+            sessionId,
+            targetTab?.workspacePath ?? "",
+            100,
+          );
+          const fresh = get().bySession[targetKey];
+          if (!fresh || fresh.streaming) return;
+          const { messages, changed } = reconcileAssistantTailFromHistory(
+            fresh.messages,
+            page.messages,
+          );
+          if (!changed) {
+            if (attempt < 2) {
+              const wait = Promise.withResolvers<void>();
+              setTimeout(wait.resolve, 300);
+              await wait.promise;
+              continue;
+            }
+            return;
+          }
+          const cur = get().bySession[targetKey];
+          if (!cur || cur.streaming) return;
+          patchSession(set, targetKey, {
+            messages,
+            turnEndStatus: cur.turnEndStatus
+              ? buildTurnEndStatus(messages, cur.turnEndStatus.at, {
+                  subagentHistory: cur.subagentHistory,
+                  engine: engineFromSessionKey(targetKey) || engine,
+                })
+              : cur.turnEndStatus,
+          });
+          return;
+        }
+      } catch (error) {
+        console.error("Failed to refresh session turn body:", error);
       }
     },
   };
