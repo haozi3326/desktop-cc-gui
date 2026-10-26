@@ -145,6 +145,7 @@ export function createSessionActions(
               markUnseenIfBackground,
               upsertSessionMeta: (meta) => upsertSessionMetaInto(set, meta),
               refreshSessionUsage: (k) => get().refreshSessionUsage(k),
+              refreshSessionTurnBody: (k) => get().refreshSessionTurnBody(k),
               turnSettled,
             }),
           ),
