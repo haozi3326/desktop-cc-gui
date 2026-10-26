@@ -3,7 +3,11 @@
  * panels stay readable over the cover layer. */
 
 html[data-wallpaper="active"] {
-  --wallpaper-chrome-surface: color-mix(in srgb, var(--color-neutral-100) 52%, transparent);
+  --wallpaper-chrome-surface: color-mix(
+    in srgb,
+    var(--color-neutral-100) var(--wallpaper-chrome-mix, 52%),
+    transparent
+  );
   --color-background-full: var(--wallpaper-chrome-surface);
   --color-background-primary-default: var(--wallpaper-chrome-surface);
   --color-background-primary-hover: color-mix(in srgb, var(--color-neutral-100) 72%, transparent);
@@ -14,7 +18,11 @@ html[data-wallpaper="active"] {
 }
 
 html.dark[data-wallpaper="active"] {
-  --wallpaper-chrome-surface: color-mix(in srgb, var(--color-neutral-880) 48%, transparent);
+  --wallpaper-chrome-surface: color-mix(
+    in srgb,
+    var(--color-neutral-880) var(--wallpaper-chrome-mix, 52%),
+    transparent
+  );
   --color-background-full: var(--wallpaper-chrome-surface);
   --color-background-primary-default: var(--wallpaper-chrome-surface);
   --color-background-primary-hover: color-mix(in srgb, var(--color-neutral-850) 68%, transparent);

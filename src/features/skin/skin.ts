@@ -7,18 +7,48 @@ import { type SkinState, isWallpaperActive } from "./skin-types";
 export const SKIN_STORAGE_KEY = "ccgui-next.skin:v1";
 export const SKIN_CHANGE_EVENT = "ccgui:skin-change";
 
+export const WALLPAPER_CHROME_OPACITY_DEFAULT = 52;
+export const WALLPAPER_CHROME_OPACITY_MIN = 15;
+export const WALLPAPER_CHROME_OPACITY_MAX = 85;
+
+export function normalizeWallpaperChromeOpacity(value: unknown): number {
+  const n =
+    typeof value === "number" && Number.isFinite(value)
+      ? Math.round(value)
+      : WALLPAPER_CHROME_OPACITY_DEFAULT;
+  return Math.min(
+    WALLPAPER_CHROME_OPACITY_MAX,
+    Math.max(WALLPAPER_CHROME_OPACITY_MIN, n),
+  );
+}
+
 function validateSkin(value: unknown): SkinState | null {
   if (!value || typeof value !== "object") return null;
   const record = value as Record<string, unknown>;
   const kind = record.kind;
+  const chromeOpacity =
+    record.chromeOpacity !== undefined
+      ? normalizeWallpaperChromeOpacity(record.chromeOpacity)
+      : undefined;
   if (kind === "default") return { kind: "default" };
   if (kind === "builtin" && typeof record.builtinId === "string" && record.builtinId) {
-    return { kind: "builtin", builtinId: record.builtinId };
+    return { kind: "builtin", builtinId: record.builtinId, chromeOpacity };
   }
   if (kind === "local" && typeof record.localPath === "string" && record.localPath) {
-    return { kind: "local", localPath: record.localPath };
+    return { kind: "local", localPath: record.localPath, chromeOpacity };
   }
   return null;
+}
+
+function normalizeSkinState(state: SkinState): SkinState {
+  if (state.kind === "default") return { kind: "default" };
+  const chromeOpacity = normalizeWallpaperChromeOpacity(
+    state.chromeOpacity ?? skinSnapshot.chromeOpacity,
+  );
+  if (state.kind === "builtin") {
+    return { kind: "builtin", builtinId: state.builtinId, chromeOpacity };
+  }
+  return { kind: "local", localPath: state.localPath, chromeOpacity };
 }
 
 function loadSkinFromStorage(): SkinState {
@@ -60,11 +90,23 @@ function syncDocumentWallpaper(state: SkinState): void {
   }
 }
 
+function syncDocumentChromeMix(state: SkinState): void {
+  const root = document.documentElement;
+  if (!isWallpaperActive(state) || resolveWallpaperUrl(state) == null) {
+    root.style.removeProperty("--wallpaper-chrome-mix");
+    return;
+  }
+  const mix = normalizeWallpaperChromeOpacity(state.chromeOpacity);
+  root.style.setProperty("--wallpaper-chrome-mix", `${mix}%`);
+}
+
 /** Apply selection to the document and persist for the next launch. */
 export function applySkin(state: SkinState): void {
-  persistSkin(state);
-  syncDocumentWallpaper(state);
-  window.dispatchEvent(new CustomEvent<SkinState>(SKIN_CHANGE_EVENT, { detail: state }));
+  const normalized = normalizeSkinState(state);
+  persistSkin(normalized);
+  syncDocumentWallpaper(normalized);
+  syncDocumentChromeMix(normalized);
+  window.dispatchEvent(new CustomEvent<SkinState>(SKIN_CHANGE_EVENT, { detail: normalized }));
 }
 
 export function readSkinState(): SkinState {
@@ -73,8 +115,20 @@ export function readSkinState(): SkinState {
 
 /** Boot-time read from bootstrap.tsx (before React paints). */
 export function applyStoredSkin(): void {
-  skinSnapshot = loadSkinFromStorage();
+  skinSnapshot = normalizeSkinState(loadSkinFromStorage());
   syncDocumentWallpaper(skinSnapshot);
+  syncDocumentChromeMix(skinSnapshot);
+}
+
+export function setWallpaperChromeOpacity(opacity: number): void {
+  const current = readSkinState();
+  if (current.kind === "default") return;
+  applySkin({ ...current, chromeOpacity: opacity });
+}
+
+export function readWallpaperChromeOpacity(state: SkinState = readSkinState()): number {
+  if (state.kind === "default") return WALLPAPER_CHROME_OPACITY_DEFAULT;
+  return normalizeWallpaperChromeOpacity(state.chromeOpacity);
 }
 
 export function setSkinDefault(): void {

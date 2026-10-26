@@ -30,7 +30,6 @@ import { ChatCenterPane } from "./ChatCenterPane";
 import { SplitDragProvider } from "./split/drag";
 import { useComposerBridge } from "./split/composer-bridge";
 import { resolvePanelLayout } from "./panel-layout";
-import { SkinPanel } from "@/features/skin/SkinPanel";
 import { SkinWallpaperLayer } from "@/features/skin/SkinWallpaperLayer";
 // Side-effect import: registers the builtin files/changes tabs into
 // panelTabRegistry (plan §4.2 #4).
@@ -63,7 +62,6 @@ export default function ChatPage() {
   // Terminal dock: toggled from the header open-actions cluster (and ⌘J).
   const toggleTerminal = useTerminalStore((s) => s.toggle);
   const [dialog, setDialog] = useState<ChatPageDialog | null>(null);
-  const [skinOpen, setSkinOpen] = useState(false);
   // 全局 composer ref 是一层「读到当前聚焦栏」的桥：单栏就是原来那一个输入框，
   // 分屏后落到聚焦格（空格子没有输入框时为空，不抢焦点）。
   const composerInputRef = useComposerBridge();
@@ -202,12 +200,6 @@ export default function ChatPage() {
     if (activeTabKey) handleTabClose(activeTabKey);
   }, [activeTabKey, handleTabClose]);
 
-  useEffect(() => {
-    const open = () => setSkinOpen(true);
-    window.addEventListener("ccgui:open-skin-panel", open);
-    return () => window.removeEventListener("ccgui:open-skin-panel", open);
-  }, []);
-
   useChatPageLifecycle(init, gitRefresh, active?.workspacePath);
   useChatShortcutHandlers(
     active?.workspacePath,
@@ -259,7 +251,6 @@ export default function ChatPage() {
         onNewBrowser={!isWeb && betaNewBrowser ? handleNewBrowser : undefined}
         onOpenPlugins={handleOpenPlugins}
         onOpenMission={betaMissionWorkbench ? handleOpenMission : undefined}
-        onOpenSkin={() => setSkinOpen(true)}
         onReorderWorkspaces={handleReorderWorkspaces}
         onDropWorkspaceToSection={handleDropWorkspaceToSection}
         onCreateGroup={handleCreateGroup}
@@ -365,7 +356,6 @@ export default function ChatPage() {
       </div>
 
       <ChatPageDialogs dialog={dialog} onClose={() => setDialog(null)} />
-      <SkinPanel open={skinOpen} onClose={() => setSkinOpen(false)} />
     </div>
     </SplitDragProvider>
   );

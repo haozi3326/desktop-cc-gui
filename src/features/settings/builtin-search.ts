@@ -28,6 +28,16 @@ import type { SettingsSearchEntry } from "./settings-search";
 
 /** 通用 (`GeneralSection.tsx` + `PromptHistorySettings.tsx`): every row of the
  *  page, in the order the page renders them, so results read in page order. */
+const skinEntries: SettingsSearchEntry[] = [
+  {
+    page: "skin",
+    anchor: "chromeOpacity",
+    labelKey: "skin.chromeOpacity",
+    sectionKey: "skin.title",
+    keywords: ["wallpaper", "opacity", "translucency", "壁纸", "透明度", "磨砂"],
+  },
+];
+
 const generalEntries: SettingsSearchEntry[] = [
   // 外观
   {
@@ -331,6 +341,8 @@ const workspaceEntries: SettingsSearchEntry[] = [
 
 export const builtinSearchEntries: SettingsSearchEntry[] = [
   ...generalEntries,
+
+  ...skinEntries,
 
   // 桌面宠物（其他）
   ...petEntries,

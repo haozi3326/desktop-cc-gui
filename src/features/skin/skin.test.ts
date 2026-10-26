@@ -5,12 +5,16 @@ import {
   applyStoredSkin,
   isSkinWallpaperActive,
   readSkinState,
+  readWallpaperChromeOpacity,
   resolveWallpaperUrl,
   setSkinDefault,
+  setWallpaperChromeOpacity,
+  WALLPAPER_CHROME_OPACITY_DEFAULT,
 } from "./skin";
 
 beforeEach(() => {
   localStorage.clear();
+  setSkinDefault();
   delete document.documentElement.dataset.wallpaper;
 });
 
@@ -24,13 +28,32 @@ describe("skin persistence", () => {
     expect(JSON.parse(localStorage.getItem(SKIN_STORAGE_KEY) ?? "{}")).toEqual({
       kind: "builtin",
       builtinId: "twilight-hills",
+      chromeOpacity: WALLPAPER_CHROME_OPACITY_DEFAULT,
     });
-    expect(readSkinState()).toEqual({ kind: "builtin", builtinId: "twilight-hills" });
+    expect(readSkinState()).toEqual({
+      kind: "builtin",
+      builtinId: "twilight-hills",
+      chromeOpacity: WALLPAPER_CHROME_OPACITY_DEFAULT,
+    });
+  });
+
+  it("persists wallpaper chrome opacity with the skin selection", () => {
+    applySkin({ kind: "builtin", builtinId: "twilight-hills" });
+    setWallpaperChromeOpacity(64);
+    expect(readWallpaperChromeOpacity()).toBe(64);
+    expect(JSON.parse(localStorage.getItem(SKIN_STORAGE_KEY) ?? "{}").chromeOpacity).toBe(64);
+    applyStoredSkin();
+    expect(readWallpaperChromeOpacity()).toBe(64);
+    expect(document.documentElement.style.getPropertyValue("--wallpaper-chrome-mix")).toBe("64%");
   });
 
   it("persists local image path", () => {
     applySkin({ kind: "local", localPath: "/tmp/wall.png" });
-    expect(readSkinState()).toEqual({ kind: "local", localPath: "/tmp/wall.png" });
+    expect(readSkinState()).toEqual({
+      kind: "local",
+      localPath: "/tmp/wall.png",
+      chromeOpacity: WALLPAPER_CHROME_OPACITY_DEFAULT,
+    });
     expect(resolveWallpaperUrl(readSkinState())).toContain(encodeURIComponent("/tmp/wall.png"));
   });
 

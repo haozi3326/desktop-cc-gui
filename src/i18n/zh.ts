@@ -1659,6 +1659,9 @@ export const zh = {
     pickLocal: "选本地图片",
     pickLocalTitle: "选择壁纸图片",
     resetOfficial: "恢复官方默认",
+    chromeOpacity: "界面透明度",
+    chromeOpacityHint: "同时调节侧栏、对话区与底栏的磨砂强度。",
+    chromeOpacityDisabled: "启用壁纸后可调节界面透明度。",
   },
   commands: {
     paletteTitle: "命令面板",

@@ -52,6 +52,7 @@ import { BetaFeaturesSection } from "./BetaFeaturesSection";
 import { builtinSearchEntries } from "./builtin-search";
 import { CliConfigBody } from "./CliConfigBody";
 import { GeneralSection } from "./GeneralSection";
+import { SkinSection } from "./SkinSection";
 import { PerformanceDiagnosticsSection } from "./PerformanceDiagnostics";
 import { PetSection } from "./PetSection";
 import { ProxySection } from "./ProxySection";
@@ -135,6 +136,7 @@ function makeCli(engine: EngineId): CliConfigState {
 
 const PAGES: PageSpec[] = [
   { page: "general", render: () => <GeneralSection /> },
+  { page: "skin", render: () => <SkinSection /> },
   { page: "pet", render: () => <PetSection /> },
   { page: "proxy", render: () => <ProxySection /> },
   { page: "shortcuts", render: () => <ShortcutsSection /> },
