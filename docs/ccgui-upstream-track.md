@@ -24,7 +24,7 @@
 2. 打开 `src-tauri/tauri.conf.json`：`productName` === **手扶拖拉机**，`version` 与 `package.json` / `src-tauri/Cargo.toml` 一致。
 3. 确认产品策略：手扶侧**无**桌面远程「检查更新」模块时，不应出现 CC GUI 的 UpdateSection / updater 依赖。
 4. `pnpm build` → `pnpm exec tauri build --bundles app`（签名 key 缺失可 ad-hoc，以产物 `.app` 内 Info.plist 为准）。
-5. 替换 Applications 前备份旧包；安装后看关于/状态栏版本号与图标是否为手扶品牌。
+5. 替换 Applications：用 `scripts/install-macos-hand-tractor.sh`（**不保留**旧包备份；勿在 `/Applications` 下手动留 `.app.bak-*`）。安装后核对 `CFBundleIdentifier` 为 **`com.hao.hand-tractor`**、图标为拖拉机。
 6. **Windows 安装包**：走 GitHub fork CI，Gitee 不提供 Win 产物（见仓库 CI 说明）。
 7. 用户可见版本说明：同步 `src/version/changelog.ts` 的 `CHANGELOG_DATA`（应用内版本弹窗数据源）。
 

@@ -17,9 +17,11 @@ pnpm exec tauri icon "$SOURCE" -o icons
 
 cp icons/icon.png "$ROOT/public/app-icon.png"
 cp icons/icon.png icons/app-icon.png
+# Dock / Finder 部分路径仍查找 AppIcon.icns（与 CC GUI 套图命名一致）
+cp icons/icon.icns icons/AppIcon.icns
 
 mkdir -p "$EXPORT"
-for f in app-icon.png 32x32.png 64x64.png 128x128.png 128x128@2x.png icon.png icon.icns icon.ico; do
+for f in app-icon.png 32x32.png 64x64.png 128x128.png 128x128@2x.png icon.png icon.icns AppIcon.icns icon.ico; do
   cp "icons/$f" "$EXPORT/$f"
 done
 
