@@ -93,9 +93,17 @@ struct PluginIdArgs {
 
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
-struct PluginStorageGetArgs {
+struct PluginStorageKeyArgs {
     id: String,
     key: String,
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct PluginStorageSetArgs {
+    id: String,
+    key: String,
+    value: Value,
 }
 
 #[derive(Deserialize)]
@@ -1288,8 +1296,25 @@ pub(super) async fn dispatch(
             ser(crate::plugins::plugin_read_file(a.id, a.name))
         }
         "plugin_storage_get" => {
-            let a: PluginStorageGetArgs = parse_args(&raw)?;
+            let a: PluginStorageKeyArgs = parse_args(&raw)?;
             ser(crate::plugins::plugin_storage_get(app.state(), a.id, a.key))
+        }
+        "plugin_storage_set" => {
+            let a: PluginStorageSetArgs = parse_args(&raw)?;
+            ser(crate::plugins::plugin_storage_set(
+                app.state(),
+                a.id,
+                a.key,
+                a.value,
+            ))
+        }
+        "plugin_storage_delete" => {
+            let a: PluginStorageKeyArgs = parse_args(&raw)?;
+            ser(crate::plugins::plugin_storage_delete(
+                app.state(),
+                a.id,
+                a.key,
+            ))
         }
         // Asset capabilities use the same authenticated bridge and the same
         // backend permission gates as desktop; they grant no general file

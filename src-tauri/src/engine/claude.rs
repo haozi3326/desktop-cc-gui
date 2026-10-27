@@ -344,15 +344,9 @@ impl Engine for ClaudeEngine {
                         effort: reported_effort,
                     });
                 }
-                // Some providers buffer the final answer into the transcript
-                // assistant record without streaming `text_delta` events (long
-                // plan/checklist replies are a common case). Surface text
-                // blocks as assistant snapshots so live settle matches jsonl.
-                if let Some(message) = value.get("message") {
-                    if let Some(text) = claude_assistant_snapshot_text(message) {
-                        out.push(super::assistant_message(text));
-                    }
-                }
+                // Transcript assistant lines may carry tool_use and buffered
+                // text without live SSE deltas; tail replay uses this path.
+                push_transcript_assistant_blocks(&value, out);
             }
             "user" => {
                 // tool_result blocks carry permission denials as is_error
@@ -749,28 +743,44 @@ fn format_api_retry(value: &Value) -> String {
     msg
 }
 
-/// Plain assistant text from a Claude Code `type: assistant` transcript line.
-fn claude_assistant_snapshot_text(message: &Value) -> Option<String> {
-    let content = message.get("content")?;
-    let mut text = String::new();
-    match content {
-        Value::Array(blocks) => {
-            for block in blocks {
-                if block.get("type").and_then(Value::as_str) != Some("text") {
+/// Tool calls and assistant text on transcript `assistant` lines (session
+/// jsonl). The live stdout stream uses SSE `stream_event` instead; tailing
+/// the jsonl after stdout EOF replays these blocks into the run timeline.
+fn push_transcript_assistant_blocks(value: &Value, out: &mut Vec<EngineEvent>) {
+    let Some(content) = value
+        .get("message")
+        .and_then(|m| m.get("content"))
+        .and_then(Value::as_array)
+    else {
+        return;
+    };
+    for block in content {
+        match block.get("type").and_then(Value::as_str) {
+            Some("text") => {
+                let Some(text) = block.get("text").and_then(Value::as_str) else {
                     continue;
-                }
-                if let Some(part) = block.get("text").and_then(Value::as_str) {
-                    text.push_str(part);
+                };
+                let trimmed = text.trim();
+                if !trimmed.is_empty() {
+                    out.push(super::assistant_message(trimmed.to_string()));
                 }
             }
+            Some("tool_use") => {
+                let name = block
+                    .get("name")
+                    .and_then(Value::as_str)
+                    .unwrap_or("")
+                    .to_string();
+                let id = block.get("id").and_then(Value::as_str);
+                let input = block.get("input").cloned();
+                out.push(super::tool_call_message_with_id(
+                    name,
+                    input.as_ref(),
+                    id.as_deref(),
+                ));
+            }
+            _ => {}
         }
-        Value::String(s) => text.push_str(s),
-        _ => return None,
-    }
-    if text.trim().is_empty() {
-        None
-    } else {
-        Some(text)
     }
 }
 

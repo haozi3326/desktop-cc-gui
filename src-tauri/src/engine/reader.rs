@@ -1,6 +1,7 @@
 //! Stdout reader and per-turn streaming state: the capped line reader,
 //! event dispatch core, and settle/cleanup path for engine process runs.
 
+use super::claude_rollout::ClaudeTranscriptTail;
 use super::codex_usage;
 use super::events::EngineEvent;
 #[cfg(test)]
@@ -768,6 +769,8 @@ impl TurnCore {
 pub(crate) struct RunContext {
     pub(crate) core: TurnCore,
     pub(crate) engine_impl: Box<dyn Engine>,
+    /// Workspace the run was launched in; used to tail Claude session jsonl.
+    pub(crate) workspace: PathBuf,
     pub(crate) pid: u32,
     /// Session id fixed before spawn (grok `-s`); seeds TurnState.
     pub(crate) preassigned_session_id: Option<String>,
@@ -933,6 +936,29 @@ pub(crate) async fn read_line_capped(
 /// `{model?, effort?}` for the launch/served selection events. Absent sides
 /// are omitted, not nulled: a sparse report must never read as an
 /// authoritative empty one.
+fn poll_claude_transcript_tail(
+    ctx: &RunContext,
+    state: &mut TurnState,
+    tail: &mut Option<ClaudeTranscriptTail>,
+) {
+    let Some(session_id) = state.native_session_id.as_deref() else {
+        return;
+    };
+    if tail.is_none() {
+        *tail = ClaudeTranscriptTail::open(&ctx.workspace, session_id);
+    }
+    let Some(tail) = tail.as_mut() else {
+        return;
+    };
+    for line in tail.poll_lines() {
+        let mut events = Vec::new();
+        ctx.engine_impl.parse_line(&line, &mut events);
+        for event in events {
+            ctx.dispatch_event(state, event);
+        }
+    }
+}
+
 fn selection_payload(model: Option<String>, effort: Option<String>) -> Value {
     let mut out = serde_json::Map::new();
     if let Some(model) = model.filter(|m| !m.trim().is_empty()) {
@@ -970,7 +996,10 @@ pub(crate) async fn run_reader(stdout: ChildStdout, ctx: RunContext) {
     let mut reader = BufReader::new(stdout);
     let mut line_buf = Vec::new();
     let is_codex = ctx.core.engine_id == "codex";
+    let is_claude = ctx.core.engine_id == "claude";
     let mut usage_tail: Option<codex_usage::UsageTail> = None;
+    let mut claude_tail: Option<ClaudeTranscriptTail> = None;
+    let mut stdout_eof = false;
     // Only the stream's own thread id (thread.started) may open the log: a
     // resumed run's preassigned id can name a thread the CLI is no longer
     // writing to, and tailing that file would miss this run's reports.
@@ -1008,21 +1037,29 @@ pub(crate) async fn run_reader(stdout: ChildStdout, ctx: RunContext) {
                 child_exited = true;
                 continue;
             }
-            _ = poll.tick(), if is_codex && !state.saw_done && !state.saw_error => {
-                if let Some(tail) = usage_tail.as_mut() {
-                    for usage in tail.poll() {
-                        ctx.dispatch_event(&mut state, EngineEvent::Usage(usage));
+            _ = poll.tick(), if (is_codex || (is_claude && stdout_eof))
+                && !state.saw_done
+                && !state.saw_error =>
+            {
+                if is_codex {
+                    if let Some(tail) = usage_tail.as_mut() {
+                        for usage in tail.poll() {
+                            ctx.dispatch_event(&mut state, EngineEvent::Usage(usage));
+                        }
+                    } else if stream_session_id && tail_attempts < 20 {
+                        // The CLI creates the log a moment after the thread
+                        // id arrives. Attempt every tick rather than backing
+                        // off: the tail starts at the file's end, so any wait
+                        // here is a window in which a record lands unread.
+                        tail_attempts += 1;
+                        usage_tail = state
+                            .native_session_id
+                            .as_deref()
+                            .and_then(codex_usage::UsageTail::open);
                     }
-                } else if stream_session_id && tail_attempts < 20 {
-                    // The CLI creates the log a moment after the thread
-                    // id arrives. Attempt every tick rather than backing
-                    // off: the tail starts at the file's end, so any wait
-                    // here is a window in which a record lands unread.
-                    tail_attempts += 1;
-                    usage_tail = state
-                        .native_session_id
-                        .as_deref()
-                        .and_then(codex_usage::UsageTail::open);
+                }
+                if is_claude && stdout_eof {
+                    poll_claude_transcript_tail(&ctx, &mut state, &mut claude_tail);
                 }
                 continue;
             }
@@ -1030,7 +1067,14 @@ pub(crate) async fn run_reader(stdout: ChildStdout, ctx: RunContext) {
         };
         let line = match read {
             Ok(LineRead::Line(bytes)) => bytes,
-            Ok(LineRead::Eof) => break,
+            Ok(LineRead::Eof) => {
+                stdout_eof = true;
+                if is_claude && !child_exited && !state.saw_done {
+                    poll_claude_transcript_tail(&ctx, &mut state, &mut claude_tail);
+                    continue;
+                }
+                break;
+            }
             Ok(LineRead::TooLong) => {
                 // A line this large is never a real event — the engine is
                 // stuck writing garbage. Settle the turn as a terminal
@@ -1161,6 +1205,16 @@ pub(crate) async fn run_reader(stdout: ChildStdout, ctx: RunContext) {
         );
     }
 
+    if is_claude && !state.saw_done && !state.saw_error {
+        for _ in 0..20 {
+            poll_claude_transcript_tail(&ctx, &mut state, &mut claude_tail);
+            if state.saw_done {
+                break;
+            }
+            tokio::time::sleep(std::time::Duration::from_millis(100)).await;
+        }
+    }
+
     if !state.saw_done && !state.saw_error {
         let killed = ctx.killed.load(std::sync::atomic::Ordering::SeqCst);
         if killed {
@@ -1204,6 +1258,26 @@ pub(crate) async fn run_reader(stdout: ChildStdout, ctx: RunContext) {
                 &ctx.core.engine_id,
                 "error",
                 Value::String(message),
+            );
+        } else if ctx.core.engine_id == "claude" {
+            // Claude turns must end with an explicit `result` NDJSON line on
+            // stdout. A clean process exit without one is not a successful
+            // turn — the transcript tail above may have filled tool rows.
+            state.push(
+                &ctx.core.sink,
+                &ctx.core.run_id,
+                &ctx.core.engine_id,
+                "warn",
+                Value::String(
+                    "Claude exited without a result line; the timeline was synced from the session transcript where possible.".into(),
+                ),
+            );
+            state.push(
+                &ctx.core.sink,
+                &ctx.core.run_id,
+                &ctx.core.engine_id,
+                "done",
+                serde_json::json!({ "usage": null }),
             );
         } else {
             // Clean EOF without an explicit done line (kimi).
@@ -1334,6 +1408,7 @@ mod staging_tests {
                     db: None,
                 },
                 engine_impl: Box::new(grok::GrokEngine),
+                workspace: PathBuf::from("/"),
                 pid: 0,
                 preassigned_session_id: None,
                 initial_model: None,
@@ -1402,6 +1477,7 @@ mod staging_tests {
                 db: None,
             },
             engine_impl: Box::new(grok::GrokEngine),
+            workspace: PathBuf::from("/"),
             pid: 4242,
             preassigned_session_id: None,
             initial_model: None,
@@ -1698,6 +1774,7 @@ mod terminal_event_tests {
                     db: None,
                 },
                 engine_impl: Box::new(crate::engine::pi_family::pi()),
+                workspace: PathBuf::from("/"),
                 pid,
                 preassigned_session_id: None,
                 initial_model: None,

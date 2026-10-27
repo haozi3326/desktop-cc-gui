@@ -6,6 +6,27 @@ import {
 } from "../assistant-body";
 import { mergeAssistantSnapshot } from "./stream";
 
+/** When the live store stopped ingesting events (early done + settledRunIds)
+ *  but the transcript scanner kept indexing, the file tail can be longer than
+ *  the in-memory turn — merge tools and other rows for the current turn. */
+export function reconcileSessionTurnFromHistory(
+  live: Message[],
+  history: Message[],
+): { messages: Message[]; changed: boolean } {
+  if (history.length === 0) return { messages: live, changed: false };
+  const liveStart = currentTurnStartIndex(live);
+  const histStart = currentTurnStartIndex(history);
+  const liveTail = live.slice(liveStart);
+  const histTail = history.slice(histStart);
+  if (histTail.length <= liveTail.length) {
+    return { messages: live, changed: false };
+  }
+  return {
+    messages: [...live.slice(0, liveStart), ...histTail],
+    changed: true,
+  };
+}
+
 /** After a turn settles, merge assistant body from transcript tail when the
  *  live timeline is missing or shorter than the file (late snapshots). */
 export function reconcileAssistantTailFromHistory(

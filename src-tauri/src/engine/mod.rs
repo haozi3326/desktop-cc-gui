@@ -1,6 +1,7 @@
 pub mod agy;
 pub mod claude;
 mod claude_channel;
+mod claude_rollout;
 
 /// Claude 渠道下的实际模型名（opus/sonnet/haiku/fable 别名 → 渠道的槽位模型，
 /// `default` → 渠道默认）。后台复盘直接对渠道发 HTTP，需要和 spawn 用同一份
@@ -1210,6 +1211,7 @@ async fn send_reserved(
             db: Some(Arc::clone(&state.db)),
         },
         engine_impl: launch.engine_impl,
+        workspace: launch.req.workspace.clone(),
         pid,
         preassigned_session_id: launch.built.preassigned_session_id.clone(),
         initial_model,
@@ -2598,6 +2600,7 @@ mod retry_lifecycle_tests {
                 db: None,
             },
             engine_impl: Box::new(pi_family::omp()),
+            workspace: PathBuf::from("/"),
             pid: child.id().unwrap(),
             preassigned_session_id: Some("session".to_string()),
             initial_model: None,
@@ -2648,6 +2651,7 @@ mod retry_lifecycle_tests {
                 db: None,
             },
             engine_impl: Box::new(codex::CodexEngine),
+            workspace: PathBuf::from("/"),
             pid: child.id().unwrap(),
             preassigned_session_id: None,
             initial_model: None,
@@ -2770,6 +2774,7 @@ mod retry_lifecycle_tests {
                 db: None,
             },
             engine_impl: Box::new(pi_family::omp()),
+            workspace: PathBuf::from("/"),
             pid,
             preassigned_session_id: Some("session-held".to_string()),
             initial_model: None,

@@ -28,7 +28,10 @@ import {
 } from "./stream";
 import { buildTurnEndStatus, engineFromSessionKey } from "../turn-end-status";
 import { rememberSuppressedGrant } from "../grant-path";
-import { reconcileAssistantTailFromHistory } from "./session-tail-reconcile";
+import {
+  reconcileAssistantTailFromHistory,
+  reconcileSessionTurnFromHistory,
+} from "./session-tail-reconcile";
 import { mergeUsage, parseUsage } from "../usage";
 import {
   bindRunLifecycle,
@@ -1209,11 +1212,12 @@ export function createMessagingActions(
           );
           const fresh = get().bySession[targetKey];
           if (!fresh || fresh.streaming) return;
+          const tail = reconcileSessionTurnFromHistory(fresh.messages, page.messages);
           const { messages, changed } = reconcileAssistantTailFromHistory(
-            fresh.messages,
+            tail.messages,
             page.messages,
           );
-          if (!changed) {
+          if (!tail.changed && !changed) {
             if (attempt < 2) {
               const wait = Promise.withResolvers<void>();
               setTimeout(wait.resolve, 300);

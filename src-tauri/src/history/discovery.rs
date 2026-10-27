@@ -110,7 +110,7 @@ fn strip_verbatim_prefix(path: &str) -> &str {
 /// disagree on drive-letter case, slash direction, and trailing separators,
 /// and the CLI encodes whatever cwd spelling it saw — so try the raw
 /// spelling, a trailing-separator-trimmed one, and the canonicalized path.
-fn claude_project_dirs(base: &Path, workspace: &Path) -> Vec<PathBuf> {
+pub(crate) fn claude_project_dirs(base: &Path, workspace: &Path) -> Vec<PathBuf> {
     fn push(
         out: &mut Vec<PathBuf>,
         seen: &mut std::collections::HashSet<String>,

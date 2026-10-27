@@ -4,7 +4,10 @@ import type { EngineEventPayload } from "@/lib/events";
 import type { ChatStore } from "../store";
 import { handleEngineEvents, settledRuns, type EngineEventDeps } from "./engine-events";
 import { EMPTY_SESSION, runRouting } from "./stream";
-import { reconcileAssistantTailFromHistory } from "./session-tail-reconcile";
+import {
+  reconcileAssistantTailFromHistory,
+  reconcileSessionTurnFromHistory,
+} from "./session-tail-reconcile";
 
 vi.mock("@/lib/ipc", () => ({ ipc: { rescanSessions: vi.fn(async () => {}) } }));
 
@@ -81,6 +84,24 @@ describe("late assistant snapshot after done", () => {
       (m) => m.role === "assistant" && m.text.includes("CHECK OK"),
     )?.text;
     expect(text).toContain("字典已经同步到正式库");
+  });
+});
+
+describe("reconcileSessionTurnFromHistory", () => {
+  it("extends a short live turn with tool rows from the transcript", () => {
+    const live = [
+      { seq: 1, role: "user" as const, text: "读日志了吗", ts: null },
+      { seq: 2, role: "tool" as const, text: "Bash", ts: null },
+      { seq: 3, role: "tool" as const, text: "Bash", ts: null },
+    ];
+    const history = [
+      ...live,
+      { seq: 4, role: "tool" as const, text: "Bash", ts: null },
+      { seq: 5, role: "tool" as const, text: "Bash", ts: null },
+    ];
+    const { messages, changed } = reconcileSessionTurnFromHistory(live, history);
+    expect(changed).toBe(true);
+    expect(messages.filter((m) => m.role === "tool")).toHaveLength(4);
   });
 });
 

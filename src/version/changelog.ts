@@ -29,6 +29,26 @@ export function changelogEntryFor(version: string): ChangelogEntry | undefined {
 
 export const CHANGELOG_DATA: ChangelogEntry[] = [
   {
+    version: "1.1.7",
+    date: "2026-10-27",
+    content: {
+      zh: `🐛 修复
+- **Claude 回合早结束、界面缺工具行/正文**：stdout 无 \`result\` 时不再对 Claude 线合成假 \`done\`；进程退出后轮询会话 jsonl，把 \`assistant\` 里的 tool_use 与文本补进时间线；回合 settle 后前端用 transcript 补全当前回合工具 tail，避免「本回合没有可见回复」。
+- **目录授权路径含 \`..\` 或尚未创建的父目录**（自 CC GUI v1.1.7 挑选）：\`canonicalize_lenient\` 拒绝越界 \`..\` 与悬空符号链接；批准 grant 时自动 \`mkdir -p\` 目标目录，避免引擎忽略不存在的额外根。
+- **Web/中继插件 storage 写入**（自 CC GUI v1.1.7 挑选）：桥接层路由 \`plugin_storage_set/delete\`，避免远程页 fire-and-forget 存储触发 unhandledrejection。
+
+📋 待后续网络可用时再挑选合入（见 docs/ccgui-upstream-track.md）
+- CodeBuddy 引擎、韩语界面、侧栏一次多选工作区等 v1.1.7 大特性尚未整包合入。`,
+      en: `🐛 Fixes
+- **Claude turns ending early with missing tools/body**: no synthetic \`done\` on the Claude path when stdout lacks a \`result\`; after exit, poll session jsonl for \`assistant\` tool_use/text; after settle, merge transcript tool tail so empty-reply placeholders do not stick.
+- **Grant paths with \`..\` or not-yet-created parents** (cherry-picked from CC GUI v1.1.7): reject escaping \`..\` and dangling symlinks in \`canonicalize_lenient\`; \`grant_root\` mkdirs approved dirs so engines see real roots.
+- **Web/relay plugin storage writes** (cherry-picked from CC GUI v1.1.7): route \`plugin_storage_set/delete\` on the bridge to avoid unhandled rejections.
+
+📋 Still pending when git fetch works (see docs/ccgui-upstream-track.md)
+- Large v1.1.7 items such as CodeBuddy engine, Korean UI, and multi-select workspace folders are not merged wholesale yet.`,
+    },
+  },
+  {
     version: "1.1.5",
     date: "2026-10-26",
     content: {

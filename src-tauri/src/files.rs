@@ -1,6 +1,6 @@
 use base64::Engine as _;
 use serde::Serialize;
-use std::path::{Path, PathBuf};
+use std::path::{Component, Path, PathBuf};
 use std::sync::Arc;
 
 const MAX_READ_BYTES: usize = 1024 * 1024;
@@ -52,23 +52,39 @@ fn mtime_ms(meta: &std::fs::Metadata) -> i64 {
         .unwrap_or(0)
 }
 
-/// Canonicalize an existing path; for a not-yet-created file, canonicalize
-/// its parent and re-append the file name (one level covers write/rename
-/// targets, whose parent directories exist in practice).
+/// Canonicalize a path that may not exist yet: resolve its nearest existing
+/// ancestor and re-append the missing names (an agent's write target, and so
+/// its grant request, can sit under directories nobody has created yet).
+/// Only truly absent components are re-appended: a dangling symlink resolves
+/// nowhere, and its lexical tail would escape the root being checked.
 pub(crate) fn canonicalize_lenient(path: &Path) -> Result<PathBuf, String> {
-    if let Ok(resolved) = std::fs::canonicalize(path) {
-        return Ok(resolved);
+    match std::fs::canonicalize(path) {
+        Ok(resolved) => return Ok(resolved),
+        Err(e)
+            if e.kind() != std::io::ErrorKind::NotFound
+                || std::fs::symlink_metadata(path).is_ok() =>
+        {
+            return Err(format!("cannot resolve {}: {e}", path.display()));
+        }
+        Err(_) => {}
     }
+    let unresolved = || format!("cannot resolve {}", path.display());
+    // `..` outside the verified prefix is not something we may reproduce
+    // lexically: whether a hop over a missing directory still resolves
+    // depends on the platform's path parser (Unix fails component-wise,
+    // Windows' Win32 layer collapses `..` before touching the filesystem),
+    // so the result would diverge per OS. Refuse instead of guessing.
+    if path.components().any(|c| matches!(c, Component::ParentDir)) {
+        return Err(unresolved());
+    }
+    // `file_name` is None for a trailing `..`, which cannot be resolved
+    // lexically once the directory before it is missing.
+    let name = path.file_name().ok_or_else(unresolved)?;
     let parent = path
         .parent()
         .filter(|p| !p.as_os_str().is_empty())
-        .ok_or_else(|| format!("cannot resolve {}", path.display()))?;
-    let base = std::fs::canonicalize(parent)
-        .map_err(|e| format!("cannot resolve {}: {e}", parent.display()))?;
-    let name = path
-        .file_name()
-        .ok_or_else(|| format!("cannot resolve {}", path.display()))?;
-    Ok(base.join(name))
+        .ok_or_else(unresolved)?;
+    Ok(canonicalize_lenient(parent)?.join(name))
 }
 
 /// Workspace roots, user-granted directories and the pasted-images sandbox
@@ -116,39 +132,22 @@ fn strip_verbatim_prefix(path: PathBuf) -> PathBuf {
     }
 }
 
-/// Walk `start` upward until an existing directory is found, then canonicalize
-/// it. Grant-only: `canonicalize_lenient` stays one-level for file I/O.
-fn first_existing_grant_dir(start: &Path) -> Result<PathBuf, String> {
-    let mut candidate = start;
-    while !candidate.as_os_str().is_empty() {
-        if candidate.is_dir() {
-            let resolved = std::fs::canonicalize(candidate)
-                .map_err(|e| format!("cannot resolve {}: {e}", candidate.display()))?;
-            return Ok(strip_verbatim_prefix(resolved));
-        }
-        candidate = candidate
-            .parent()
-            .filter(|p| !p.as_os_str().is_empty())
-            .ok_or_else(|| format!("cannot resolve {}", start.display()))?;
-    }
-    Err(format!("cannot resolve {}", start.display()))
-}
-
 /// The directory a grant for `path` would cover: the path itself when it is
 /// a directory, otherwise its parent (granting a single file would not cover
-/// its siblings, which is never what the file-tree user wants). When nested
-/// parents are missing, walk up to the first existing directory.
+/// its siblings). Missing intermediate directories are resolved lexically via
+/// `canonicalize_lenient`, then `grant_root` creates them on disk.
 fn grant_dir_for(path: &str) -> Result<PathBuf, String> {
-    let trimmed = path.trim();
-    let path = Path::new(trimmed);
-    if path.is_dir() {
-        return first_existing_grant_dir(path);
-    }
-    let parent = path
-        .parent()
-        .filter(|p| !p.as_os_str().is_empty())
-        .ok_or_else(|| format!("cannot resolve {trimmed}"))?;
-    first_existing_grant_dir(parent)
+    let resolved = canonicalize_lenient(Path::new(path.trim()))?;
+    let dir = if resolved.is_dir() {
+        resolved
+    } else {
+        resolved
+            .parent()
+            .filter(|p| !p.as_os_str().is_empty())
+            .ok_or_else(|| format!("cannot resolve {path}"))?
+            .to_path_buf()
+    };
+    Ok(strip_verbatim_prefix(dir))
 }
 
 /// Resolve the directory a `grant_root` call would cover — the confirm
@@ -165,7 +164,16 @@ pub fn grant_scope(path: String) -> Result<String, String> {
 /// for this command.
 #[tauri::command]
 pub fn grant_root(db: tauri::State<'_, Arc<crate::db::Db>>, path: String) -> Result<(), String> {
-    let dir = grant_dir_for(&path)?;
+    grant_root_in(&db, &path)
+}
+
+fn grant_root_in(db: &crate::db::Db, path: &str) -> Result<(), String> {
+    let dir = grant_dir_for(path)?;
+    // A grant for a file the agent has yet to write can name a directory
+    // that does not exist. Engines skip missing extra roots and the agent
+    // cannot create one outside its allowed dirs, so create it here or the
+    // approved grant never takes effect.
+    std::fs::create_dir_all(&dir).map_err(|e| format!("mkdir {}: {e}", dir.display()))?;
     db.add_granted_root(&dir.to_string_lossy())
 }
 
@@ -687,31 +695,50 @@ mod tests {
     }
 
     #[test]
-    fn grant_dir_for_walks_up_when_nested_parents_missing() {
+    fn grant_for_file_under_uncreated_dirs_creates_and_admits_them() {
         let scratch = Scratch::new();
-        let claude = scratch.0.join(".claude");
-        std::fs::create_dir_all(&claude).unwrap();
-        let target = claude.join("rules").join("foo.md");
-        let dir = grant_dir_for(&target.to_string_lossy()).unwrap();
-        let want = strip_verbatim_prefix(std::fs::canonicalize(&claude).unwrap());
-        assert_eq!(dir, want);
+        let db = crate::db::Db::open_at(&scratch.0.join("test.db")).unwrap();
+        let outside = Scratch::new();
+        let file = outside
+            .0
+            .join("investigate")
+            .join("deeper")
+            .join("dump.sql");
+        let file_str = file.to_string_lossy().to_string();
 
-        let only_root = Scratch::new();
-        let target = only_root.0.join(".claude").join("rules").join("foo.md");
-        let dir = grant_dir_for(&target.to_string_lossy()).unwrap();
-        let want = strip_verbatim_prefix(std::fs::canonicalize(&only_root.0).unwrap());
-        assert_eq!(dir, want);
+        let dir = grant_dir_for(&file_str).unwrap();
+        let base = strip_verbatim_prefix(std::fs::canonicalize(&outside.0).unwrap());
+        assert_eq!(dir, base.join("investigate").join("deeper"));
+
+        grant_root_in(&db, &file_str).unwrap();
+        assert!(dir.is_dir());
+        assert!(ensure_allowed(&file_str, &db).is_ok());
     }
 
     #[test]
-    fn grant_dir_for_one_level_missing_parent_still_grants_parent() {
-        let scratch = Scratch::new();
-        let parent = scratch.0.join("rules");
-        std::fs::create_dir_all(&parent).unwrap();
-        let target = parent.join("new-file.md");
-        let dir = grant_dir_for(&target.to_string_lossy()).unwrap();
-        let want = strip_verbatim_prefix(std::fs::canonicalize(&parent).unwrap());
-        assert_eq!(dir, want);
+    fn lenient_canonicalize_rejects_parent_hop_past_missing_dir() {
+        let outside = Scratch::new();
+        let hop = outside.0.join("missing").join("..").join("x.txt");
+        assert!(canonicalize_lenient(&hop).is_err());
+        std::fs::create_dir(outside.0.join("sub")).unwrap();
+        let hop = outside
+            .0
+            .join("sub")
+            .join("..")
+            .join("missing")
+            .join("x.txt");
+        assert!(canonicalize_lenient(&hop).is_err());
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn lenient_canonicalize_refuses_dangling_symlink() {
+        let workspace = Scratch::new();
+        let elsewhere = Scratch::new();
+        let link = workspace.0.join("link");
+        std::os::unix::fs::symlink(elsewhere.0.join("not-yet"), &link).unwrap();
+        assert!(canonicalize_lenient(&link.join("f.txt")).is_err());
+        assert!(canonicalize_lenient(&link).is_err());
     }
 
     #[test]

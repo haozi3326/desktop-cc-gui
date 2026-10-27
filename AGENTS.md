@@ -9,6 +9,13 @@
 - 代码、测试和文档不一致时查明依据，不把现有实现自动当作正确设计。不确定性先通过源码和可逆实验消解，必须由用户决定的取舍再具体询问。
 - 长任务保留目标、关键证据、已排除方案、当前状态和下一步；恢复时先核对现有改动，避免重复已证伪的尝试。
 
+## 产品与上游（手扶 ↔ CC GUI）
+
+- **产品源码 tip**：Gitee `origin/main`，本地分支 **`push-gitee`**。GitHub `fork/main` 是 CC GUI 备份/Win CI，**不是**默认发版基线。
+- 借鉴 CC GUI 时读 **`docs/ccgui-upstream-track.md`**：禁止整包 `merge upstream/main`；只 cherry-pick / 移植批准切片；合入后更新该文档快照。
+- **装机 / 本地打包前**：`tauri.conf.json` 的 `productName` 必须为 **手扶拖拉机**，版本号与 `package.json`、`Cargo.toml`、`CHANGELOG_DATA` 一致；勿在 fork 品牌树上覆盖 `/Applications/手扶拖拉机.app`。
+- 发版说明必须写入 **`src/version/changelog.ts`**；Windows 安装包走 GitHub fork CI，不在 Gitee 打 Win 包。
+
 ## 项目边界
 
 - 本项目是 Tauri 桌面客户端：前端功能在 `src/features`，通用 UI 在 `src/components`，原生能力在 `src-tauri/src`，插件公共契约在 `packages/plugin-sdk`。
