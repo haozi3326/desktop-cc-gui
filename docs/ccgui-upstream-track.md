@@ -18,6 +18,15 @@
 
 **禁止**：在未核对品牌与版本的情况下 `git reset --hard fork/main` 后直接 `tauri build` 覆盖 `/Applications/手扶拖拉机.app`。
 
+### 给 Cursor / 外部 AI 的 tip 钉选（易错）
+
+| 来源 | 示例 commit | 能否当手扶默认基线 |
+|---|---|---|
+| Gitee `origin/main` / 本地 **`push-gitee`** | `b385ac415`（随发版更新） | **是** |
+| GitHub **fork** `main`（CC GUI） | `dc102f2db`、`5136c131` 等 | **否** — 备份与 Win CI，品牌为 CC GUI |
+
+机器人写「当前版本 / 对照 diff / 合入建议」时，必须先确认分支为 **`push-gitee`** 且 remote 产品为 Gitee；勿把 fork tip 写成手扶 tip。流式空回复与对账策略见 **`docs/hand-tractor-stream-accuracy.md`**。
+
 ## 发版 / 装机检查清单
 
 1. `git checkout push-gitee && git pull origin main`（或确认在已批准的产品 tip 上）。
@@ -33,6 +42,8 @@
 | 项 | 值 |
 |---|---|
 | 产品工作分支 | `push-gitee` @ `origin/main` 线 |
+| 产品 tip（示例） | **`b385ac415`** |
+| fork 误用 tip（勿钉） | `dc102f2db`、`5136c131`（GitHub fork / CC GUI） |
 | 本批目标版本 | **1.1.7**（手扶品牌） |
 | 上游已发布标签 | **v1.1.7**（2026-10-26） |
 | 与上游分叉点 | `cc561dbb8`（v1.1.4 附近） |

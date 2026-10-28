@@ -1,11 +1,11 @@
-import { lazy, memo, Suspense, useEffect, useMemo, useRef, useState, type MutableRefObject, type RefObject } from "react";
+import { lazy, memo, Suspense, useCallback, useEffect, useMemo, useRef, useState, type MutableRefObject, type RefObject } from "react";
 import { useVirtualizer, type Virtualizer } from "@tanstack/react-virtual";
 import { useTranslation } from "react-i18next";
 import Copy from "lucide-react/dist/esm/icons/copy";
 import Check from "lucide-react/dist/esm/icons/check";
 import type { Message } from "@/lib/ipc";
 
-import type { SessionState } from "../store";
+import type { ActiveSession, SessionState } from "../store";
 import { useChatStore } from "../store";
 import { timelineColumnClass } from "../chat-column";
 import { parseUsage } from "../usage";
@@ -47,6 +47,7 @@ import {
   searchHighlightSupported,
 } from "./timeline-search";
 import {
+  currentTurnHasProcessSteps,
   currentTurnHasRenderableAssistantRow,
   isContinueLatchSyntheticReply,
   turnHasUsableAssistantBody,
@@ -79,6 +80,8 @@ const TimelineRowView = memo(function TimelineRowView({
   seenTools,
   searchTarget,
   fallbackModel,
+  emptyReplyTranscriptPending,
+  onQuickPrompt,
 }: {
   row: TimelineRow;
   workspacePath: string;
@@ -93,6 +96,8 @@ const TimelineRowView = memo(function TimelineRowView({
   searchTarget?: ProcessSearchTarget;
   /** Session activeModel when message.model is empty (stream tail already uses this). */
   fallbackModel?: string | null;
+  emptyReplyTranscriptPending?: boolean;
+  onQuickPrompt?: (prompt: string) => void;
 }) {
   // Plugin-defined row kinds (plan §4.2 #5) dispatch to the registered
   // renderer before the builtin switch below; builtin kinds never hit this
@@ -133,6 +138,8 @@ const TimelineRowView = memo(function TimelineRowView({
       workspacePath={workspacePath}
       turnFinal={row.turnFinal && !turnLive}
       fallbackModel={fallbackModel}
+      emptyReplyTranscriptPending={emptyReplyTranscriptPending}
+      onQuickPrompt={onQuickPrompt}
     />
   );
 });
@@ -379,12 +386,16 @@ export const MessageRow = memo(function MessageRow({
   workspacePath,
   turnFinal,
   fallbackModel,
+  emptyReplyTranscriptPending,
+  onQuickPrompt,
 }: {
   message: Message;
   workspacePath: string;
   turnFinal: boolean;
   /** session.activeModel when message.model is missing. */
   fallbackModel?: string | null;
+  emptyReplyTranscriptPending?: boolean;
+  onQuickPrompt?: (prompt: string) => void;
 }) {
   const { t } = useTranslation();
   // A live row's text grows per store flush; a full markdown reparse per
@@ -423,12 +434,33 @@ export const MessageRow = memo(function MessageRow({
   return (
     <div className="group flex flex-col text-left">
       {bodyEmpty && !message.live ? (
-        <p
-          className="text-body-regular text-text-tertiary"
-          data-testid="assistant-empty-reply"
-        >
-          {t("chat.noVisibleReply")}
-        </p>
+        <div className="flex flex-col gap-2" data-testid="assistant-empty-reply">
+          <p className="text-body-regular text-text-tertiary">
+            {emptyReplyTranscriptPending
+              ? t("chat.noVisibleReplyTranscriptPending")
+              : t("chat.noVisibleReply")}
+          </p>
+          {turnFinal && onQuickPrompt ? (
+            <div className="flex flex-wrap gap-2">
+              <button
+                type="button"
+                className="rounded-md border border-border-secondary px-2.5 py-1 text-caption-1-medium text-text-secondary hover:bg-bg-secondary"
+                data-testid="empty-reply-continue"
+                onClick={() => onQuickPrompt(t("chat.emptyReplyContinue"))}
+              >
+                {t("chat.emptyReplyContinue")}
+              </button>
+              <button
+                type="button"
+                className="rounded-md border border-border-secondary px-2.5 py-1 text-caption-1-medium text-text-secondary hover:bg-bg-secondary"
+                data-testid="empty-reply-explain"
+                onClick={() => onQuickPrompt(t("chat.emptyReplyExplain"))}
+              >
+                {t("chat.emptyReplyExplain")}
+              </button>
+            </div>
+          ) : null}
+        </div>
       ) : (
         <Markdown text={displayText} workspacePath={workspacePath} streaming={message.live} />
       )}
@@ -591,15 +623,33 @@ export const MessageTimeline = memo(function MessageTimeline({
   engine,
   onLoadEarlier,
   workspacePath,
+  sessionKey: timelineSessionKey,
 }: {
   session: SessionState;
   streaming: boolean;
   engine: string;
   onLoadEarlier: () => void;
   workspacePath: string;
+  sessionKey: string;
 }) {
 
   const { t } = useTranslation();
+  const send = useChatStore((s) => s.send);
+  const onQuickPrompt = useCallback(
+    (prompt: string) => {
+      if (streaming) return;
+      const slash = timelineSessionKey.indexOf("/");
+      if (slash < 1) return;
+      const sessionId = timelineSessionKey.slice(slash + 1);
+      const target: ActiveSession = { engine, sessionId, workspacePath };
+      void send(prompt, [], undefined, target);
+    },
+    [engine, send, streaming, timelineSessionKey, workspacePath],
+  );
+  const emptyReplyTranscriptPending =
+    session.transcriptReconcilePhase === "syncing" ||
+    (currentTurnHasProcessSteps(session.messages) &&
+      !turnHasUsableAssistantBody(session.messages));
   const thinkingAutoCollapse = useChatStore((s) => s.thinkingAutoCollapse);
   const wideLayout = useChatStore((s) => s.wideLayout);
   const scrollRef = useRef<HTMLDivElement | null>(null);
@@ -903,6 +953,23 @@ export const MessageTimeline = memo(function MessageTimeline({
                           {t("chat.possiblyIncomplete")}
                         </span>
                       ) : null}
+                      {session.transcriptReconcilePhase === "syncing" ? (
+                        <span
+                          className="pl-3 text-caption-1-regular text-text-secondary"
+                          data-testid="transcript-reconcile-syncing"
+                        >
+                          {t("chat.transcriptReconcileSyncing")}
+                        </span>
+                      ) : null}
+                      {session.transcriptReconcilePhase === "synced" ||
+                      session.turnEndStatus.reconciledFromTranscript ? (
+                        <span
+                          className="pl-3 text-caption-1-regular text-text-secondary"
+                          data-testid="transcript-reconcile-synced"
+                        >
+                          {t("chat.transcriptReconcileSynced")}
+                        </span>
+                      ) : null}
                     </div>
                   ) : null
                 ) : (
@@ -918,6 +985,8 @@ export const MessageTimeline = memo(function MessageTimeline({
                     seenTools={seenTools}
                     searchTarget={item.index === currentSearchRow ? processSearchTarget : undefined}
                     fallbackModel={activeModel}
+                    emptyReplyTranscriptPending={emptyReplyTranscriptPending}
+                    onQuickPrompt={onQuickPrompt}
                   />
                 )}
               </div>

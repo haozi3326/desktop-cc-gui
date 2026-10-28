@@ -10,6 +10,7 @@ import { ConfirmDialog } from "@/components/dialogs";
 import { ipc } from "@/lib/ipc";
 import { isWeb } from "@/lib/transport";
 import { ROW_ACTION } from "./WorkspaceGroupRow";
+import { isWholeHomeGrantPath } from "@/lib/grant-path";
 
 /**
  * On-demand directory grants (lib/grant.ts flow); desktop-only commands, so
@@ -52,6 +53,11 @@ export function GrantedRootsCard({
             </span>
           </SettingsSectionLabel>
           <SettingsCard>
+            {grantedRoots.some(isWholeHomeGrantPath) ? (
+              <p className="px-4 py-2 text-caption-1-regular text-text-secondary">
+                {t("settings.grantedRootsWholeHomeWarning")}
+              </p>
+            ) : null}
             {grantedRoots.map((dir) => (
               <SettingsRow key={dir} label={dir}>
                 <button

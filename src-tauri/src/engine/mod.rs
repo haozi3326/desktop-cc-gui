@@ -506,6 +506,29 @@ fn ensure_plan_approval(
     Ok(())
 }
 
+/// Whole-home grants make `--add-dir` cover Documents/Desktop via broad tools.
+pub(crate) fn filter_whole_home_additional_dirs(dirs: Vec<String>) -> Vec<String> {
+    let Some(home) = dirs::home_dir().and_then(|p| p.canonicalize().ok()) else {
+        return dirs;
+    };
+    dirs.into_iter()
+        .filter(|d| {
+            let trimmed = d.trim();
+            let path = std::path::Path::new(trimmed);
+            let Ok(can) = path.canonicalize() else {
+                return true;
+            };
+            if can == home {
+                eprintln!(
+                    "[engine] omitting whole-home granted root from --add-dir: {trimmed}"
+                );
+                return false;
+            }
+            true
+        })
+        .collect()
+}
+
 /// Resolved launch parameters for one send: request, binary, built command.
 struct Launch {
     comparison_model: Option<Option<String>>,
@@ -601,12 +624,14 @@ fn prepare_launch(
         permission: permission.filter(|p| !p.trim().is_empty()),
         // Cap defensively: the list lands on a command line, and a
         // hand-edited db should not produce an argv bomb.
-        additional_dirs: additional_dirs
-            .into_iter()
-            .map(|d| d.trim().to_string())
-            .filter(|d| !d.is_empty() && Path::new(d).is_absolute())
-            .take(32)
-            .collect(),
+        additional_dirs: filter_whole_home_additional_dirs(
+            additional_dirs
+                .into_iter()
+                .map(|d| d.trim().to_string())
+                .filter(|d| !d.is_empty() && Path::new(d).is_absolute())
+                .take(32)
+                .collect(),
+        ),
         provider_id,
         // Only honored by engines that can actually mount the driver.
         computer_use: computer_use.filter(|on| *on && engine_impl.supports_computer_use()),
@@ -2519,6 +2544,25 @@ mod permission_tests {
         }
     }
 }
+#[cfg(test)]
+mod additional_dirs_filter_tests {
+    use super::*;
+
+    #[test]
+    fn whole_home_grant_is_dropped_from_additional_dirs() {
+        let Some(home) = dirs::home_dir() else {
+            return;
+        };
+        let home_str = home.to_string_lossy().into_owned();
+        let filtered = filter_whole_home_additional_dirs(vec![
+            home_str.clone(),
+            "/tmp".to_string(),
+        ]);
+        assert!(!filtered.iter().any(|d| d == &home_str));
+        assert!(filtered.contains(&"/tmp".to_string()));
+    }
+}
+
 #[cfg(test)]
 mod retry_lifecycle_tests {
     use super::*;

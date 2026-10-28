@@ -36,6 +36,16 @@ export function currentTurnStartIndex(messages: Message[]): number {
   return 0;
 }
 
+/** Current turn contains at least one tool or thinking step (transcript may still hold more). */
+export function currentTurnHasProcessSteps(messages: Message[]): boolean {
+  const start = currentTurnStartIndex(messages);
+  for (let i = start; i < messages.length; i++) {
+    const role = messages[i].role;
+    if (role === "tool" || role === "thinking") return true;
+  }
+  return false;
+}
+
 export function turnHasUsableAssistantBody(messages: Message[]): boolean {
   const start = currentTurnStartIndex(messages);
   for (let i = start; i < messages.length; i++) {

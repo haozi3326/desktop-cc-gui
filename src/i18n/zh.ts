@@ -267,6 +267,12 @@ export const zh = {
     turnAwaitingConfirmation: "等你确认",
     possiblyIncomplete: "回复可能不完整，可再发继续",
     noVisibleReply: "本回合没有可见回复",
+    noVisibleReplyTranscriptPending:
+      "转录本已有记录，界面正文补齐中…",
+    emptyReplyContinue: "继续",
+    emptyReplyExplain: "说明刚才做了什么",
+    transcriptReconcileSyncing: "正从转录本补齐界面…",
+    transcriptReconcileSynced: "已从转录本补齐",
     retrying: "重试中 {{attempt}}/{{max}}",
     retryingNoMax: "重试中 {{attempt}}",
     modelNoChannel: "无可用渠道：这模型没渠道，换一个能通的再发",
@@ -1195,6 +1201,8 @@ export const zh = {
     langEn: "English",
     grantedRoots: "已授权目录",
     grantedRootsDesc: "工作区之外、经你确认允许访问的目录",
+    grantedRootsWholeHomeWarning:
+      "整棵用户主目录过宽，引擎不会把它当作 --add-dir；请改为具体子文件夹。",
     revokeAccess: "撤销授权",
     revokeAccessConfirm:
       "撤销对 {{dir}} 的访问授权？该目录下的文件将立即恢复不可访问。",

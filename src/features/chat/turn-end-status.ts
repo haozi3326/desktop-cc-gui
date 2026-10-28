@@ -5,6 +5,8 @@ import { deriveAgentTaskSteps } from "./components/agent-task-steps";
 import { parseDraftSessionKey } from "./store/persistence";
 
 /** Post-settle strip: clear 「响应中」, show 「已结束」 (+ optional incomplete tip). */
+export type TranscriptReconcilePhase = "idle" | "syncing" | "synced";
+
 export interface TurnEndStatus {
   at: number;
   possiblyIncomplete: boolean;
@@ -12,6 +14,8 @@ export interface TurnEndStatus {
   backgroundRunning: boolean;
   /** Question / grant / plan review still waiting on the user. */
   awaitingConfirmation: boolean;
+  /** Live UI was filled from session history / jsonl after settle. */
+  reconciledFromTranscript?: boolean;
 }
 
 export interface TurnEndHardState {
@@ -81,6 +85,7 @@ export function turnEndHardStateActive(hard: TurnEndHardState): boolean {
 export interface BuildTurnEndStatusOptions {
   subagentHistory?: Message[];
   engine?: string;
+  reconciledFromTranscript?: boolean;
 }
 
 export function buildTurnEndStatus(
@@ -104,6 +109,7 @@ export function buildTurnEndStatus(
     at,
     possiblyIncomplete: assistantTextLooksPossiblyIncomplete(lastAssistantText(messages)),
     ...hard,
+    ...(options?.reconciledFromTranscript ? { reconciledFromTranscript: true } : {}),
   };
 }
 

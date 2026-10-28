@@ -68,7 +68,7 @@ describe("timeline search within bounded process history", () => {
     }));
     if (extraMatches) messages.unshift({ seq: 0, role: "user", text: "目标🙂", ts: null });
     await act(async () => {
-      root.render(<MessageTimeline session={{ ...EMPTY_SESSION, messages }} streaming={false} engine="omp" onLoadEarlier={() => {}} workspacePath="/ws" />);
+      root.render(<MessageTimeline session={{ ...EMPTY_SESSION, messages }} streaming={false} engine="omp" onLoadEarlier={() => {}} workspacePath="/ws" sessionKey="omp/test" />);
     });
   }
 
@@ -351,6 +351,7 @@ describe("settled response check record", () => {
           engine="omp"
           onLoadEarlier={() => {}}
           workspacePath="/ws"
+          sessionKey="omp/test"
         />,
       );
     });
@@ -505,6 +506,7 @@ describe("host compaction rows", () => {
           engine="omp"
           onLoadEarlier={() => {}}
           workspacePath="/ws"
+          sessionKey="omp/test"
         />,
       );
     });
@@ -592,6 +594,7 @@ describe("chat column width (宽幕布)", () => {
           engine="omp"
           onLoadEarlier={() => {}}
           workspacePath="/ws"
+          sessionKey="omp/test"
         />,
       );
     });
@@ -747,6 +750,7 @@ describe("waiting vs settled A+C status rail", () => {
           engine="omp"
           onLoadEarlier={() => {}}
           workspacePath="/ws"
+          sessionKey="omp/test"
         />,
       );
     });
@@ -777,6 +781,7 @@ describe("waiting vs settled A+C status rail", () => {
           engine="omp"
           onLoadEarlier={() => {}}
           workspacePath="/ws"
+          sessionKey="omp/test"
         />,
       );
     });
@@ -818,11 +823,15 @@ describe("waiting vs settled A+C status rail", () => {
           engine="omp"
           onLoadEarlier={() => {}}
           workspacePath="/ws"
+          sessionKey="omp/test"
         />,
       );
     });
     const placeholder = container.querySelector('[data-testid="assistant-empty-reply"]');
-    expect(placeholder?.textContent).toBe("本回合没有可见回复");
+    expect(placeholder?.querySelector("p")?.textContent).toBe(
+      "转录本已有记录，界面正文补齐中…",
+    );
+    expect(placeholder?.querySelector('[data-testid="empty-reply-continue"]')).not.toBeNull();
     expect(container.querySelector('[data-testid="turn-end-status"]')?.textContent).toContain("已结束");
   });
 
@@ -848,6 +857,7 @@ describe("waiting vs settled A+C status rail", () => {
           engine="omp"
           onLoadEarlier={() => {}}
           workspacePath="/ws"
+          sessionKey="omp/test"
         />,
       );
     });
@@ -877,11 +887,13 @@ describe("waiting vs settled A+C status rail", () => {
           engine="omp"
           onLoadEarlier={() => {}}
           workspacePath="/ws"
+          sessionKey="omp/test"
         />,
       );
     });
-    expect(container.querySelector('[data-testid="assistant-empty-reply"]')?.textContent).toBe(
-      "本回合没有可见回复",
+    const placeholder = container.querySelector('[data-testid="assistant-empty-reply"]');
+    expect(placeholder?.querySelector("p")?.textContent).toBe(
+      "转录本已有记录，界面正文补齐中…",
     );
     expect(container.querySelector('[data-testid="turn-end-status"]')?.textContent).toContain("已结束");
   });
@@ -907,6 +919,7 @@ describe("waiting vs settled A+C status rail", () => {
           engine="omp"
           onLoadEarlier={() => {}}
           workspacePath="/ws"
+          sessionKey="omp/test"
         />,
       );
     });
@@ -935,11 +948,12 @@ describe("waiting vs settled A+C status rail", () => {
           engine="omp"
           onLoadEarlier={() => {}}
           workspacePath="/ws"
+          sessionKey="omp/test"
         />,
       );
     });
     const placeholder = container.querySelector('[data-testid="assistant-empty-reply"]');
-    expect(placeholder?.textContent).toBe("本回合没有可见回复");
+    expect(placeholder?.querySelector("p")?.textContent).toBe("本回合没有可见回复");
     expect(container.querySelector('[data-testid="turn-incomplete-hint"]')?.textContent).toBe(
       "回复可能不完整，可再发继续",
     );
@@ -966,6 +980,7 @@ describe("waiting vs settled A+C status rail", () => {
           engine="omp"
           onLoadEarlier={() => {}}
           workspacePath="/ws"
+          sessionKey="omp/test"
         />,
       );
     });
@@ -1008,6 +1023,7 @@ describe("waiting vs settled A+C status rail", () => {
           engine="omp"
           onLoadEarlier={() => {}}
           workspacePath="/ws"
+          sessionKey="omp/test"
         />,
       );
     });
@@ -1047,6 +1063,7 @@ describe("waiting vs settled A+C status rail", () => {
           engine="omp"
           onLoadEarlier={() => {}}
           workspacePath="/ws"
+          sessionKey="omp/test"
         />,
       );
     });
@@ -1085,6 +1102,7 @@ describe("waiting vs settled A+C status rail", () => {
           engine="omp"
           onLoadEarlier={() => {}}
           workspacePath="/ws"
+          sessionKey="omp/test"
         />,
       );
     });

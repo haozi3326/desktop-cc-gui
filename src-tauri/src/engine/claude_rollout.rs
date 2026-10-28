@@ -21,7 +21,11 @@ impl ClaudeTranscriptTail {
     /// the file's end so only records appended during this run are replayed.
     pub fn open(workspace: &Path, session_id: &str) -> Option<Self> {
         let path = claude_session_jsonl_path(workspace, session_id)?;
-        let mut file = File::open(path).ok()?;
+        eprintln!(
+            "[claude-transcript] session_id={session_id} jsonl={}",
+            path.display()
+        );
+        let mut file = File::open(&path).ok()?;
         let offset = file.seek(SeekFrom::End(0)).ok()?;
         Some(Self { file, offset })
     }

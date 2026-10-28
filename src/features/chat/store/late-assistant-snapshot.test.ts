@@ -85,6 +85,45 @@ describe("late assistant snapshot after done", () => {
     )?.text;
     expect(text).toContain("字典已经同步到正式库");
   });
+
+  it("appends tool rows that arrive after the terminal done event", () => {
+    const store = createStore<ChatStore>(() => ({
+      bySession: {
+        [KEY]: {
+          ...EMPTY_SESSION,
+          streaming: false,
+          messages: [{ seq: 1, role: "user", text: "查日志", ts: null }],
+        },
+      },
+      streamingByKey: {},
+      retryingByKey: {},
+      models: {},
+      efforts: {},
+      openTabs: [{ engine: "claude", sessionId: "sess-late", workspacePath: "/ws" }],
+      active: null,
+      drafts: {},
+      archivedSessionKeys: {},
+      createdSessionKeys: {},
+      sessionContributions: {},
+    }) as unknown as ChatStore);
+    const deps: EngineEventDeps = {
+      set: (update) => store.setState(update),
+      get: store.getState,
+      drainQueue: vi.fn(),
+      markUnseenIfBackground: vi.fn(),
+      upsertSessionMeta: vi.fn(),
+    };
+
+    handleEngineEvents([event("done", { usage: null })], deps);
+    handleEngineEvents(
+      [event("message", { role: "tool", text: "Bash", path: "/tmp/x" })],
+      deps,
+    );
+
+    expect(store.getState().bySession[KEY].messages.some((m) => m.role === "tool")).toBe(
+      true,
+    );
+  });
 });
 
 describe("reconcileSessionTurnFromHistory", () => {

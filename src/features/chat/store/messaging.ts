@@ -336,6 +336,7 @@ export function createMessagingActions(
         responseCheck: null,
         // New turn: clear the previous settle strip so 「已结束」 does not linger.
         turnEndStatus: null,
+        transcriptReconcilePhase: "idle",
       },
     );
     // A pending switch prepares its handoff in beforeSwitch, which must run
@@ -1200,8 +1201,11 @@ export function createMessagingActions(
       const before = get().bySession[targetKey];
       if (!before || before.streaming) return;
 
+      patchSession(set, targetKey, { transcriptReconcilePhase: "syncing" });
+      const reconcileAttempts = 8;
+      const reconcileDelayMs = 300;
       try {
-        for (let attempt = 0; attempt < 3; attempt += 1) {
+        for (let attempt = 0; attempt < reconcileAttempts; attempt += 1) {
           const live = get().bySession[targetKey];
           if (!live || live.streaming) return;
           const page = await loadHistoryPage(
@@ -1218,22 +1222,25 @@ export function createMessagingActions(
             page.messages,
           );
           if (!tail.changed && !changed) {
-            if (attempt < 2) {
+            if (attempt < reconcileAttempts - 1) {
               const wait = Promise.withResolvers<void>();
-              setTimeout(wait.resolve, 300);
+              setTimeout(wait.resolve, reconcileDelayMs);
               await wait.promise;
               continue;
             }
+            patchSession(set, targetKey, { transcriptReconcilePhase: "idle" });
             return;
           }
           const cur = get().bySession[targetKey];
           if (!cur || cur.streaming) return;
           patchSession(set, targetKey, {
             messages,
+            transcriptReconcilePhase: "synced",
             turnEndStatus: cur.turnEndStatus
               ? buildTurnEndStatus(messages, cur.turnEndStatus.at, {
                   subagentHistory: cur.subagentHistory,
                   engine: engineFromSessionKey(targetKey) || engine,
+                  reconciledFromTranscript: true,
                 })
               : cur.turnEndStatus,
           });
@@ -1241,6 +1248,7 @@ export function createMessagingActions(
         }
       } catch (error) {
         console.error("Failed to refresh session turn body:", error);
+        patchSession(set, targetKey, { transcriptReconcilePhase: "idle" });
       }
     },
   };

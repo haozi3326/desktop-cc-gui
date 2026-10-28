@@ -1,6 +1,6 @@
 import type { Message, TodosPayload } from "@/lib/ipc";
 import type { ResponseCheckState } from "../response-check";
-import type { TurnEndStatus } from "../turn-end-status";
+import type { TranscriptReconcilePhase, TurnEndStatus } from "../turn-end-status";
 
 /**
  * Streaming buffers and bySession write helpers. Leaf module: functions are
@@ -79,6 +79,8 @@ export interface SessionState {
   /** After a turn settles: timeline shows 「已结束」 and any parallel hard
    *  states (background subagents, confirmation docks) until the next send. */
   turnEndStatus: TurnEndStatus | null;
+  /** Post-settle history/jsonl merge for the current turn (UI hint only). */
+  transcriptReconcilePhase: TranscriptReconcilePhase;
 }
 
 export const EMPTY_SESSION: SessionState = {
@@ -101,6 +103,7 @@ export const EMPTY_SESSION: SessionState = {
   interrupted: false,
   planReviewResume: null,
   turnEndStatus: null,
+  transcriptReconcilePhase: "idle",
 };
 
 /** The model one session runs with, most specific first:

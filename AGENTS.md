@@ -11,8 +11,8 @@
 
 ## 产品与上游（手扶 ↔ CC GUI）
 
-- **产品源码 tip**：Gitee `origin/main`，本地分支 **`push-gitee`**。GitHub `fork/main` 是 CC GUI 备份/Win CI，**不是**默认发版基线。
-- 借鉴 CC GUI 时读 **`docs/ccgui-upstream-track.md`**：禁止整包 `merge upstream/main`；只 cherry-pick / 移植批准切片；合入后更新该文档快照。
+- **产品源码 tip**：Gitee `origin/main`，本地分支 **`push-gitee`**。GitHub `fork/main` 是 CC GUI 备份/Win CI，**不是**默认发版基线（勿把 fork 上的 commit 如 `dc102f2db`、`5136c131` 当作手扶当前 tip；以 `push-gitee` 上 `git rev-parse HEAD` 为准，并与 **`docs/ccgui-upstream-track.md`** 快照一致）。
+- 借鉴 CC GUI 时读 **`docs/ccgui-upstream-track.md`**：禁止整包 `merge upstream/main`；只 cherry-pick / 移植批准切片；合入后更新该文档快照。Claude 空回复 / 流式对账见 **`docs/hand-tractor-stream-accuracy.md`**。
 - **装机 / 本地打包前**：`tauri.conf.json` 的 `productName` 必须为 **手扶拖拉机**，版本号与 `package.json`、`Cargo.toml`、`CHANGELOG_DATA` 一致；勿在 fork 品牌树上覆盖 `/Applications/手扶拖拉机.app`。
 - 发版说明必须写入 **`src/version/changelog.ts`**；Windows 安装包走 GitHub fork CI，不在 Gitee 打 Win 包。
 

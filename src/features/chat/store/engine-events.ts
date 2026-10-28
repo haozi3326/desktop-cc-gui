@@ -508,6 +508,12 @@ function isLateAssistantBodyEvent(event: ChatEngineEvent): boolean {
   return data.role === "assistant" && Boolean(data.text?.trim());
 }
 
+function isLateToolBodyEvent(event: ChatEngineEvent): boolean {
+  if (event.kind !== "message") return false;
+  const data = event.data as { role?: string };
+  return data.role === "tool" || data.role === "tool_result";
+}
+
 /** Collapse whitespace and cap a prompt for use as a session title. */
 export function firstLineTitle(text: string): string {
   return text.replace(/\s+/g, " ").trim().slice(0, 40);
@@ -2110,6 +2116,7 @@ export function handleEngineEvents(
             event.kind === "error" ||
             event.kind === "question_settled" ||
             isLateAssistantBodyEvent(event) ||
+            isLateToolBodyEvent(event) ||
             // A next_turn review can arrive after its plan turn's done.
             event.kind === "plan_draft" ||
             event.kind === "plan_review"))
@@ -2188,6 +2195,8 @@ export function handleEngineEvents(
         onWarn(event, key, deps);
       } else if (isLateAssistantBodyEvent(event)) {
         onMessage(event, key, deps);
+      } else if (isLateToolBodyEvent(event) && data) {
+        appendToolMessages(deps.set, key, [{ ...data, patch: data.patch === true }], stampedModel(deps, event.engine, key));
       }
       continue;
     }

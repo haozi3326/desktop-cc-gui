@@ -67,6 +67,7 @@ const SessionTimeline = memo(function SessionTimeline({
       engine={engineFromSessionKey(key)}
       onLoadEarlier={onLoadEarlier}
       workspacePath={workspacePath}
+      sessionKey={key}
     />
   );
 });

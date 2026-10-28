@@ -282,6 +282,12 @@ export const en: Messages = {
     turnAwaitingConfirmation: "Waiting for you",
     possiblyIncomplete: "Reply may be incomplete — send again to continue",
     noVisibleReply: "No visible reply this turn",
+    noVisibleReplyTranscriptPending:
+      "Transcript has content; syncing reply into the timeline…",
+    emptyReplyContinue: "Continue",
+    emptyReplyExplain: "Summarize what you just did",
+    transcriptReconcileSyncing: "Syncing from transcript…",
+    transcriptReconcileSynced: "Synced from transcript",
     retrying: "Retrying {{attempt}}/{{max}}",
     retryingNoMax: "Retrying {{attempt}}",
     modelNoChannel: "No available channel — pick a model that works and send again",
@@ -1250,6 +1256,8 @@ export const en: Messages = {
     grantedRoots: "Granted Directories",
     grantedRootsDesc:
       "Directories outside workspaces that you explicitly allowed",
+    grantedRootsWholeHomeWarning:
+      "Your entire home folder is too broad and will not be passed as --add-dir; grant a specific subfolder instead.",
     revokeAccess: "Revoke access",
     revokeAccessConfirm:
       "Revoke access to {{dir}}? Files inside become inaccessible again immediately.",
