@@ -216,7 +216,7 @@ describe("ordered tool batches", () => {
     expect(store.getState().bySession[OTHER].messages).toBe(EMPTY_SESSION.messages);
   });
 
-  it.each(["done", "error"] as const)("flushes mixed channels before %s and rejects late tools", (terminal) => {
+  it.each(["done", "error"] as const)("flushes mixed channels before %s and settles late tools on done only", (terminal) => {
     const { store, deps } = setup();
     handleEngineEvents([
       event("thinking", "reason"), event("delta", "before"),
@@ -227,9 +227,12 @@ describe("ordered tool batches", () => {
     ], deps);
     flushPendingStreams(deps.set);
     const session = store.getState().bySession[KEY];
-    expect(session.messages.map(({ role, text }) => [role, text])).toEqual([
+    const base: Array<[string, string]> = [
       ["thinking", "reason"], ["assistant", "before"], ["tool", "Read"], ["assistant", "between"], ["assistant", "after"],
-    ]);
+    ];
+    expect(session.messages.map(({ role, text }) => [role, text])).toEqual(
+      terminal === "done" ? [...base, ["tool", "Late"]] : base,
+    );
     expect(session.messages.every((message) => !message.live)).toBe(true);
     expect(session.messages[2]).toMatchObject({ args: { path: "file" }, result: "ok" });
     expect(session.streaming).toBe(false);
@@ -258,7 +261,9 @@ describe("ordered tool batches", () => {
     const queue = [{ id: "queued", text: "next", images: [], queuedAt: 1 }];
     store.setState((state) => ({ bySession: { ...state.bySession, [KEY]: { ...state.bySession[KEY], interrupted: true, queue } } }));
     handleEngineEvents([tool("Read"), event(terminal, terminal === "done" ? { usage: null } : "stopped"), tool("Late")], deps);
-    expect(store.getState().bySession[KEY].messages.map((message) => message.text)).toEqual(["Read"]);
+    expect(store.getState().bySession[KEY].messages.map((message) => message.text)).toEqual(
+      terminal === "done" ? ["Read", "Late"] : ["Read"],
+    );
     expect(store.getState().bySession[KEY].queue).toBe(queue);
     expect(deps.drainQueue).not.toHaveBeenCalled();
   });
@@ -304,8 +309,10 @@ describe("ordered tool batches", () => {
       { ...tool("Write", { patch: true, result: "new" }), runId: "new-run" },
     ], deps);
     const session = store.getState().bySession[KEY];
-    expect(session.messages).toMatchObject([{ text: "Read" }, { text: "Write", result: "new" }]);
-    expect(session.messages[0].result).toBeUndefined();
+    expect(session.messages).toMatchObject([
+      { text: "Read", result: "late" },
+      { text: "Write", result: "new" },
+    ]);
     expect(session.streaming).toBe(true);
     expect(runRouting.get("new-run")).toBe(KEY);
   });
